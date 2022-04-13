@@ -1,0 +1,16 @@
+[package]
+name = "cleaning_managment"
+version = "0.1.0"
+edition = "***REMOVED***"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+table_maker = { path = "./table_maker" }
+table_reader = { path = "./table_reader" }
+
+[Workspaces]
+members = [
+    "table_maker",
+    "table_reader",
+]
