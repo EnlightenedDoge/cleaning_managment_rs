@@ -1,6 +1,5 @@
+use chrono::NaiveDate;
 
-
-use serde::{Deserialize,Serialize};
 use serde_json::{self, Value};
 async fn get_heb_cal()->Result<String, reqwest::Error>{
     let url = "https://www.hebcal.com/hebcal?v=1&cfg=json&year=now&month=x&maj=on&mod=on&i=on&geo=none&c=off";
@@ -11,7 +10,7 @@ async fn get_heb_cal()->Result<String, reqwest::Error>{
 
 pub fn generate_heb_json()->Result<String,Box<dyn std::error::Error>>{
     let heb_cal = futures::executor::block_on(get_heb_cal())?;
-    std::fs::write("./test.json", &heb_cal)?;
+    std::fs::write("./config/test.json", &heb_cal)?;
     println!("{:?}",get_struct(&heb_cal));
     Ok(heb_cal)
 }
@@ -26,7 +25,7 @@ fn get_struct(json:&str)->Result<Vec<HebDate>,Box<dyn std::error::Error>>{
         let a = item.as_object().unwrap();
         items.push(HebDate{
             category:a["category"].as_str().unwrap().to_string(),
-            date:a["date"].as_str().unwrap().to_string(),
+            date:NaiveDate::parse_from_str(a["date"].as_str().unwrap(), "%Y-%m-%d")?,
             subcat:a["subcat"].as_str().unwrap().to_string(),
             title:a["title"].as_str().unwrap().to_string(),
         });
@@ -44,18 +43,10 @@ fn get_struct(json:&str)->Result<Vec<HebDate>,Box<dyn std::error::Error>>{
 //     Object(HashMap<String, Value>),
 // }
 
-#[derive(Deserialize,Serialize)]
-struct HebDateWrapper{
+#[derive(Debug)]
+pub struct HebDate{
     title:String,
-    date:String,
-    location:Vec<String>,
-    items:Vec<HebDate>,
-} 
-
-#[derive(Deserialize,Serialize,Debug)]
-struct HebDate{
-    title:String,
-    date:String,
+    date:NaiveDate,
     category:String,
     subcat:String,
 }
