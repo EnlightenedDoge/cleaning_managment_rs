@@ -8,11 +8,13 @@ async fn get_heb_cal()->Result<String, reqwest::Error>{
     
 }
 
-pub fn generate_heb_json()->Result<String,Box<dyn std::error::Error>>{
+
+pub fn generate_heb()->Result<Vec<HebDate>,Box<dyn std::error::Error>>{
     let heb_cal = futures::executor::block_on(get_heb_cal())?;
-    std::fs::write("./config/test.json", &heb_cal)?;
-    println!("{:?}",get_struct(&heb_cal));
-    Ok(heb_cal)
+    std::fs::write("./config/heb_date.json", &heb_cal)?;
+    
+    Ok(get_struct(&heb_cal)?)
+    
 }
 
 fn get_struct(json:&str)->Result<Vec<HebDate>,Box<dyn std::error::Error>>{
