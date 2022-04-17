@@ -1,6 +1,10 @@
+use std::result;
+
 use chrono::NaiveDate;
 
-use serde_json::{self, Value};
+use serde_json::{self, Value,from_str};
+
+use crate::list::Soldier;
 async fn get_heb_cal()->Result<String, reqwest::Error>{
     let url = "https://www.hebcal.com/hebcal?v=1&cfg=json&year=now&month=x&maj=on&mod=on&i=on&geo=none&c=off";
     let str = reqwest::get(url)?.text()?;
@@ -35,15 +39,17 @@ fn get_struct(json:&str)->Result<Vec<HebDate>,Box<dyn std::error::Error>>{
     Ok(items)
 }
 
-// #[derive(Deserialize,Serialize,Debug)]
-// enum Value {
-//     Null,
-//     Bool(bool),
-//     Number(i32),
-//     String(String),
-//     Array(Vec<Value>),
-//     Object(HashMap<String, Value>),
-// }
+pub fn exclued_holidays_from_file(dates:Vec<HebDate>, file:&str)-> Result<Vec<HebDate>,Box<dyn std::error::Error>>{
+    let file = std::fs::read_to_string(file)?;
+    let json:Value = from_str(&file)?;
+    let json:Value = json.as_object().expect("Could not find \"Excluded Holidays\"")["Excluded Holidays"];
+    let holidays = Vec::<String>::new();
+    for holiday in json.as_array().expect("Could not find holidays array").iter(){
+        holidays.push(holiday.as_object().expect("holiday list reading error")["title"].as_str().expect("holiday needs to be a string").to_string())
+    }
+    let result = holidays.into_iter().filter(|x| x.title)
+
+}
 
 #[derive(Debug)]
 pub struct HebDate{
