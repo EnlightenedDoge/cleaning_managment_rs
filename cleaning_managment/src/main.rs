@@ -1,5 +1,6 @@
 use clap::Parser;
 use table_maker::create_table;
+use table_reader::sender;
 
 #[derive(Parser)]
 #[clap(author, about, long_about = None)]
@@ -27,5 +28,9 @@ fn main() {
         };
         println!("{:?}", table);
     } else {
+        println!(
+            "{:?}",
+            sender::send_to("***REMOVED***", "Test").unwrap() //table::get_soldiers_table("./output/output_table.csv").unwrap()
+        );
     }
 }
