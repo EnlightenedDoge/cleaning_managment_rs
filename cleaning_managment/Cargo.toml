@@ -8,6 +8,8 @@ edition = "***REMOVED***"
 [dependencies]
 table_maker = { path = "./table_maker" }
 table_reader = { path = "./table_reader" }
+chrono = "0.4.19"
+clap = {version = "3.1.9", features=["derive"]}
 
 [Workspaces]
 members = [
