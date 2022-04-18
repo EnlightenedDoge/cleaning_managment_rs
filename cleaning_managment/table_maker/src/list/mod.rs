@@ -2,7 +2,7 @@ mod parse_soldiers;
 pub use self::parse_soldiers::*;
 use crate::heb_cal::HebDate;
 use chrono::{Datelike, NaiveDate, Weekday};
-use serde::{Serialize, ser::SerializeStruct};
+use serde::{ser::SerializeStruct, Serialize};
 
 #[derive(Debug)]
 pub struct Row {
@@ -10,17 +10,17 @@ pub struct Row {
     pub date: NaiveDate,
 }
 
-impl Serialize for Row{
+impl Serialize for Row {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-            S: serde::Serializer {
+        S: serde::Serializer,
+    {
         let mut state = serializer.serialize_struct("Row", 2)?;
         state.serialize_field("soldier", &serde_json::to_value(&self.soldier).unwrap())?;
         state.serialize_field("date", &self.date.to_string())?;
         state.end()
     }
 }
-
 
 pub fn get_dates(
     soldiers: Vec<Soldier>,

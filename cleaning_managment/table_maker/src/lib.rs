@@ -1,43 +1,74 @@
 mod heb_cal;
 mod list;
 use chrono::NaiveDate;
+use csv::Writer;
 use heb_cal::exclued_holidays_from_file;
 use heb_cal::generate_heb;
 use list::*;
-use csv::Writer;
+use serde::Deserialize;
 use serde::Serialize;
 const HEBDATE_PATH: &str = "./config/heb_date.json";
 const EXCLUDED_DATES_PATH: &str = "./config/excluded_hebcal.json";
 const SOLDIERS_PATH: &str = "./config/NameSheet.json";
-const TABLE_OUTPUT: &str = "./output/output_table.csv";
+const CONFIG_PATH: &str = "./config/config.json";
 
-
-pub fn create_table(
-    start_date: NaiveDate,
-    time_period: usize,
-    exclude_dates: bool,
-) -> Result<Vec<Row>, Box<dyn std::error::Error>> {
+pub fn create_table(exclude_dates: bool) -> Result<Vec<Row>, Box<dyn std::error::Error>> {
+    let config = load_config()?;
     let mut heb_cal = generate_heb()?;
     if exclude_dates {
         heb_cal = exclued_holidays_from_file(heb_cal, EXCLUDED_DATES_PATH)?;
     }
-    let soldiers = list::parse_soldiers_from_file(SOLDIERS_PATH)?;
-    let dates = get_dates(soldiers, heb_cal, start_date, time_period);
+    let mut soldiers = list::parse_soldiers_from_file(SOLDIERS_PATH)?;
+    soldiers.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
+    let dates = get_dates(soldiers, heb_cal, config.start_date, config.range);
     let mut wtr = Writer::from_writer(vec![]);
-    for date in dates.iter(){
-        wtr.serialize(Raw{
-            name:&date.soldier.name,
-            date:&date.date.to_string(),
-            number:&date.soldier.phone,
+    for date in dates.iter() {
+        wtr.serialize(Raw {
+            name: &date.soldier.name,
+            date: &date.date.to_string(),
+            number: &date.soldier.phone,
         })?;
     }
-    std::fs::write(TABLE_OUTPUT, String::from_utf8(wtr.into_inner()?)?)?;
+    std::fs::write(config.output_path, String::from_utf8(wtr.into_inner()?)?)?;
     Ok(dates)
 }
 
+fn load_config() -> Result<ConfigMaker, Box<dyn std::error::Error>> {
+    let config = std::fs::read_to_string(CONFIG_PATH)?;
+    let config: ConfigRaw = serde_json::from_str(&config)?;
+    let config = ConfigMaker::from(config);
+    Ok(config)
+}
+
+#[derive(Deserialize)]
+struct ConfigRaw {
+    start_date: String,
+    range: usize,
+    output_path: String,
+    #[allow(dead_code)]
+    send_time: String,
+    #[allow(dead_code)]
+    reset_time: String,
+}
+
+struct ConfigMaker {
+    start_date: NaiveDate,
+    range: usize,
+    output_path: String,
+}
+impl ConfigMaker {
+    fn from(config: ConfigRaw) -> Self {
+        Self {
+            output_path: config.output_path,
+            range: config.range,
+            start_date: NaiveDate::parse_from_str(&config.start_date, "%Y-%m-%d").unwrap(),
+        }
+    }
+}
+
 #[derive(Serialize)]
-struct Raw<'a>{
-    name:&'a str,
-    number:&'a str,
-    date:&'a str,
+struct Raw<'a> {
+    name: &'a str,
+    number: &'a str,
+    date: &'a str,
 }
