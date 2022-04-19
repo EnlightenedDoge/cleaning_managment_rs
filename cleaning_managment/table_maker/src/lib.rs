@@ -5,12 +5,13 @@ use csv::Writer;
 use heb_cal::exclued_holidays_from_file;
 use heb_cal::generate_heb;
 use list::*;
+pub use list::Soldier;
 use serde::Deserialize;
 use serde::Serialize;
 const HEBDATE_PATH: &str = "./config/heb_date.json";
 const EXCLUDED_DATES_PATH: &str = "./config/excluded_hebcal.json";
 const SOLDIERS_PATH: &str = "./config/NameSheet.json";
-const CONFIG_PATH: &str = "./config/config.json";
+pub const CONFIG_PATH: &str = "./config/config.json";
 
 pub fn create_table(exclude_dates: bool) -> Result<Vec<Row>, Box<dyn std::error::Error>> {
     let config = load_config()?;
@@ -24,9 +25,9 @@ pub fn create_table(exclude_dates: bool) -> Result<Vec<Row>, Box<dyn std::error:
     let mut wtr = Writer::from_writer(vec![]);
     for date in dates.iter() {
         wtr.serialize(Raw {
-            name: &date.soldier.name,
-            date: &date.date.to_string(),
-            number: &date.soldier.phone,
+            name: date.soldier.name.clone(),
+            date: date.date.to_string(),
+            number: date.soldier.phone.clone(),
         })?;
     }
     std::fs::write(config.output_path, String::from_utf8(wtr.into_inner()?)?)?;
@@ -41,14 +42,12 @@ fn load_config() -> Result<ConfigMaker, Box<dyn std::error::Error>> {
 }
 
 #[derive(Deserialize)]
-struct ConfigRaw {
-    start_date: String,
-    range: usize,
-    output_path: String,
-    #[allow(dead_code)]
-    send_time: String,
-    #[allow(dead_code)]
-    reset_time: String,
+pub struct ConfigRaw {
+    pub start_date: String,
+    pub range: usize,
+    pub output_path: String,
+    pub send_time: String,
+    pub reset_time: String,
 }
 
 struct ConfigMaker {
@@ -66,9 +65,9 @@ impl ConfigMaker {
     }
 }
 
-#[derive(Serialize)]
-struct Raw<'a> {
-    name: &'a str,
-    number: &'a str,
-    date: &'a str,
+#[derive(Serialize,Deserialize)]
+pub struct Raw {
+    pub name: String,
+    pub number: String,
+    pub date: String,
 }
