@@ -15,6 +15,7 @@ pub mod config {
         pub range: usize,
         pub output_path: String,
         pub send_time: NaiveTime,
+        pub reset_time:NaiveTime,
     }
     impl ConfigReader {
         fn from(config: ConfigRaw) -> Self {
@@ -23,6 +24,7 @@ pub mod config {
                 range: config.range,
                 start_date: NaiveDate::parse_from_str(&config.start_date, "%Y-%m-%d").unwrap(),
                 send_time:NaiveTime::parse_from_str(&config.send_time, "%H:%M:%S").unwrap(),
+                reset_time:NaiveTime::parse_from_str(&config.reset_time, "%H:%M:%S").unwrap(),
             }
         }
     }
