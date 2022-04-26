@@ -1,8 +1,8 @@
 const CONFIG_PATH: &str = "./config/config.json";
 
 pub mod config {
+    use chrono::{NaiveDate, NaiveTime};
     use table_maker::ConfigRaw;
-    use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
     pub fn load_config() -> Result<ConfigReader, Box<dyn std::error::Error>> {
         let config = std::fs::read_to_string(super::CONFIG_PATH)?;
         let config: ConfigRaw = serde_json::from_str(&config)?;
@@ -15,7 +15,7 @@ pub mod config {
         pub range: usize,
         pub output_path: String,
         pub send_time: NaiveTime,
-        pub reset_time:NaiveTime,
+        pub reset_time: NaiveTime,
     }
     impl ConfigReader {
         fn from(config: ConfigRaw) -> Self {
@@ -23,8 +23,8 @@ pub mod config {
                 output_path: config.output_path,
                 range: config.range,
                 start_date: NaiveDate::parse_from_str(&config.start_date, "%Y-%m-%d").unwrap(),
-                send_time:NaiveTime::parse_from_str(&config.send_time, "%H:%M:%S").unwrap(),
-                reset_time:NaiveTime::parse_from_str(&config.reset_time, "%H:%M:%S").unwrap(),
+                send_time: NaiveTime::parse_from_str(&config.send_time, "%H:%M:%S").unwrap(),
+                reset_time: NaiveTime::parse_from_str(&config.reset_time, "%H:%M:%S").unwrap(),
             }
         }
     }
@@ -35,7 +35,7 @@ pub mod table {
 
     use chrono::NaiveDate;
     use csv::{self, Reader};
-    use table_maker::{Raw,Soldier};
+    use table_maker::{Raw, Soldier};
 
     pub fn get_soldiers_table(
         filepath: &str,
@@ -51,7 +51,10 @@ pub mod table {
         for row in iter {
             map.insert(
                 NaiveDate::parse_from_str(&row.date, "%Y-%m-%d").unwrap(),
-                Soldier{name:row.name, phone:row.number},
+                Soldier {
+                    name: row.name,
+                    phone: row.number,
+                },
             );
         }
         Ok(map)

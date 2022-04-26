@@ -4,8 +4,8 @@ use chrono::NaiveDate;
 use csv::Writer;
 use heb_cal::exclued_holidays_from_file;
 use heb_cal::generate_heb;
-use list::*;
 pub use list::Soldier;
+use list::*;
 use serde::Deserialize;
 use serde::Serialize;
 const HEBDATE_PATH: &str = "./config/heb_date.json";
@@ -65,7 +65,7 @@ impl ConfigMaker {
     }
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Raw {
     pub name: String,
     pub number: String,
