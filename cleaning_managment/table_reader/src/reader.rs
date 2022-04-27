@@ -34,7 +34,7 @@ pub mod table {
     use std::collections::HashMap;
 
     use chrono::NaiveDate;
-    use csv::{self, Reader};
+    use csv::{self, Reader, Writer};
     use table_maker::{Raw, Soldier};
 
     pub fn get_soldiers_table(
@@ -58,5 +58,30 @@ pub mod table {
             );
         }
         Ok(map)
+    }
+    pub fn update_soldiers_table(
+        filepath: &str,
+        table: &HashMap<NaiveDate, Soldier>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut wtr = Writer::from_writer(vec![]);
+        let mut rows = Vec::<Raw>::new();
+        for p in table {
+            rows.push(Raw {
+                date: String::from(p.0.format("%Y-%m-%d").to_string()),
+                name: String::from(&p.1.name),
+                number: String::from(&p.1.phone),
+            });
+        }
+        rows.sort_by(|a, b| {
+            NaiveDate::parse_from_str(&a.date, "%Y-%m-%d")
+                .unwrap()
+                .cmp(&NaiveDate::parse_from_str(&b.date, "%Y-%m-%d").unwrap())
+        });
+        for row in rows {
+            wtr.serialize(row)?;
+        }
+        let data = String::from_utf8(wtr.into_inner()?)?;
+        std::fs::write(filepath, data)?;
+        Ok(())
     }
 }
