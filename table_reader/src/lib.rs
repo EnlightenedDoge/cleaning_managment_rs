@@ -100,7 +100,7 @@ fn send_loop(
                 is_sent = false;
                 status.clear();
             }
-            if !is_sent && now.time() > *send_time {
+            if !is_sent && (NaiveTime::from(now.time()) - *send_time).num_minutes().abs()<=1 {
                 match get_soldier(&soldiers_table, 0) {
                     Some(soldier) => {
                         if let Ok(res) =
@@ -125,7 +125,6 @@ fn send_loop(
                     }
                 }
             } else {
-                is_sent = false;
                 status.clear();
             }
             match req {
