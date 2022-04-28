@@ -124,9 +124,7 @@ fn send_loop(
                         status="No soldier found".to_string();
                     }
                 }
-            } else {
-                status.clear();
-            }
+            } 
             match req {
                 Request::Status => {
                     transmiting
