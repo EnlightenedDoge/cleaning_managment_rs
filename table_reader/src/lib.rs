@@ -44,12 +44,12 @@ pub fn start() -> Result<(), Box<dyn std::error::Error>> {
             let status = rx_status.recv()?;
             println!(
                 "sent_today: {}
-                sent status: {}
-                today's soldier: {:?}
-                tommorow's soldier: {:?}
-                now: {},
-                send time: {}
-                reset time: {}",
+sent status: {}
+today's soldier: {:?}
+tommorow's soldier: {:?}
+now: {},
+send time: {}
+reset time: {}",
                 status.sent_today,
                 status.status,
                 status.todays_soldier,
@@ -104,8 +104,10 @@ fn send_loop(
                 match get_soldier(&soldiers_table, 0) {
                     Some(soldier) => {
                         if let Ok(res) =
-                            send_to(/*&soldier.phone*/"***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE))
+                            send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE))
                         {
+                            //DEBUG
+                            send_to("***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE)).unwrap();
                             let num: u32 = res.split_whitespace().filter(|s|s.parse::<u32>().is_ok()).next().get_or_insert("0").parse().unwrap();
                             if num > 0 {
                                 is_sent = true;
