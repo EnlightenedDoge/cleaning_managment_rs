@@ -1,5 +1,6 @@
 mod heb_cal;
 mod list;
+use chrono::Datelike;
 use chrono::NaiveDate;
 use csv::Writer;
 use heb_cal::exclued_holidays_from_file;
@@ -22,15 +23,24 @@ pub fn create_table(exclude_dates: bool) -> Result<Vec<Row>, Box<dyn std::error:
     let mut soldiers = list::parse_soldiers_from_file(SOLDIERS_PATH)?;
     soldiers.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
     let dates = get_dates(soldiers, heb_cal, config.start_date, config.range);
-    let mut wtr = Writer::from_writer(vec![]);
+    let mut wtr_raw = Writer::from_writer(vec![]);
+    let mut wtr_beaut = Writer::from_writer(vec![]);
     for date in dates.iter() {
-        wtr.serialize(Raw {
+        wtr_raw.serialize(Raw {
             name: date.soldier.name.clone(),
             date: date.date.to_string(),
             number: date.soldier.phone.clone(),
         })?;
     }
-    std::fs::write(config.output_path, String::from_utf8(wtr.into_inner()?)?)?;
+    for date in dates.iter() {
+        wtr_beaut.serialize(BeautyRaw {
+            name: date.soldier.name.clone(),
+            date: date.date.to_string(),
+            day: date.date.weekday().to_string(),
+        })?;
+    }
+    std::fs::write(format!("{}output_table.csv",config.output_path), String::from_utf8(wtr_raw.into_inner()?)?)?;
+    std::fs::write(format!("{}beautified_table.csv",config.output_path), String::from_utf8(wtr_beaut.into_inner()?)?)?;
     Ok(dates)
 }
 
@@ -70,4 +80,11 @@ pub struct Raw {
     pub name: String,
     pub number: String,
     pub date: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct BeautyRaw{
+    pub day:String,
+    pub date:String,
+    pub name:String,
 }
