@@ -95,12 +95,11 @@ fn send_loop(
     loop {
         if let Ok(req) = receiving.recv() {
             //refresh variables
-            let now = chrono::Local::now();
-            if now.time() > *reset_time {
+            if is_close_to_time(reset_time) {
                 is_sent = false;
                 status.clear();
             }
-            if !is_sent && (NaiveTime::from(now.time()) - *send_time).num_minutes().abs()<=1 {
+            if !is_sent && is_close_to_time(send_time) {
                 match get_soldier(&soldiers_table, 0) {
                     Some(soldier) => {
                         if let Ok(res) =
@@ -164,6 +163,10 @@ fn get_soldier(soldiers_table: &HashMap<NaiveDate, Soldier>, add_days: i64) -> O
                 .unwrap(),
         )
         .cloned()
+}
+
+fn is_close_to_time(time:&NaiveTime)->bool{
+    (NaiveTime::from(chrono::Local::now().time()) - *time).num_minutes().abs()<=1
 }
 
 enum Request {
