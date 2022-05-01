@@ -13,7 +13,7 @@ const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** 
 
 pub fn start() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config()?;
-    let table = get_soldiers_table(&config.output_path)?;
+    let table = get_soldiers_table(&format!("{}output_table.csv",config.output_path))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
     let (tx_status, rx_status) = mpsc::channel();
     let rx_request_clock = tx_request_from_main.clone();
