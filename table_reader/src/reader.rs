@@ -1,6 +1,7 @@
 const CONFIG_PATH: &str = "./config/config.json";
 
 pub mod config {
+
     use chrono::{NaiveDate, NaiveTime};
     use table_maker::ConfigRaw;
     pub fn load_config() -> Result<ConfigReader, Box<dyn std::error::Error>> {
@@ -16,6 +17,8 @@ pub mod config {
         pub output_path: String,
         pub send_time: NaiveTime,
         pub reset_time: NaiveTime,
+        pub maintainer: String,
+        pub alert_day: chrono::Weekday,
     }
     impl ConfigReader {
         fn from(config: ConfigRaw) -> Self {
@@ -25,8 +28,19 @@ pub mod config {
                 start_date: NaiveDate::parse_from_str(&config.start_date, "%Y-%m-%d").unwrap(),
                 send_time: NaiveTime::parse_from_str(&config.send_time, "%H:%M:%S").unwrap(),
                 reset_time: NaiveTime::parse_from_str(&config.reset_time, "%H:%M:%S").unwrap(),
+                maintainer: config.maintainer,
+                alert_day:int_to_weekday(config.alert_day.parse().unwrap()),
             }
         }
+    }
+    //sunday=1,saturday = 7
+    fn int_to_weekday(i:usize)->chrono::Weekday{
+        use chrono::Weekday;
+        let weekday = [Weekday::Sun,Weekday::Mon,Weekday::Tue,Weekday::Wed,Weekday::Thu,Weekday::Fri,Weekday::Sat];
+        if let Some(day) = weekday.get(i-1){
+            return day.clone();
+        }
+        panic!("weekday config has wrong number. sun = 1.");
     }
 }
 

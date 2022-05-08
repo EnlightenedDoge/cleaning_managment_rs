@@ -58,6 +58,8 @@ pub struct ConfigRaw {
     pub output_path: String,
     pub send_time: String,
     pub reset_time: String,
+    pub maintainer: String,
+    pub alert_day:String,
 }
 
 struct ConfigMaker {

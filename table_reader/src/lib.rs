@@ -3,7 +3,7 @@ pub mod sender;
 
 use std::{collections::HashMap, io::Write, thread};
 
-use chrono::{NaiveDate, NaiveTime};
+use chrono::{NaiveDate, NaiveTime, Datelike, Weekday};
 use reader::{config::*, table::get_soldiers_table};
 use sender::send_to;
 use std::sync::mpsc;
@@ -25,6 +25,8 @@ pub fn start() -> Result<(), Box<dyn std::error::Error>> {
             &config.send_time,
             &config.reset_time,
             &config.output_path,
+            &config.maintainer,
+            &config.alert_day,
             table,
         )
     });
@@ -87,6 +89,8 @@ fn send_loop(
     send_time: &NaiveTime,
     reset_time: &NaiveTime,
     output_path: &str,
+    maintainer:&str,
+    alert_day:&Weekday,
     soldiers_table: HashMap<NaiveDate, Soldier>,
 ) {
     let mut soldiers_table = soldiers_table;
@@ -124,6 +128,11 @@ fn send_loop(
                     None => {
                         status="No soldier found".to_string();
                     }
+                }
+
+                //send to maintainer
+                if now.date().weekday()==*alert_day{
+                    send_to(maintainer, "Maintainer alert").unwrap();
                 }
             } 
             match req {
