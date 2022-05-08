@@ -27,7 +27,7 @@ fn main() {
         };
         println!("{:?}", table);
     } else {
-        match table_reader::start() {
+        match table_reader::start_interface() {
             Ok(_) => {}
             Err(e) => {
                 panic!("{:?}", e)
