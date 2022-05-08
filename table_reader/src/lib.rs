@@ -3,7 +3,7 @@ pub mod sender;
 
 use std::{collections::HashMap, io::Write, thread};
 
-use chrono::{NaiveDate, NaiveTime, Datelike, Weekday};
+use chrono::{Datelike, NaiveDate, NaiveTime, Weekday};
 use reader::{config::*, table::get_soldiers_table};
 use sender::send_to;
 use std::sync::mpsc;
@@ -13,7 +13,7 @@ const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** 
 
 pub fn start() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config()?;
-    let table = get_soldiers_table(&format!("{}output_table.csv",config.output_path))?;
+    let table = get_soldiers_table(&format!("{}output_table.csv", config.output_path))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
     let (tx_status, rx_status) = mpsc::channel();
     let rx_request_clock = tx_request_from_main.clone();
@@ -72,12 +72,14 @@ reset time: {}",
                     {
                         tx_request_from_main.send(Request::Switch(date1, date2))?;
                     } else {
-                        println!("Second date could not be parsed");
+                        println!("Second date could not be parsed. Expecting YYYY-mm-dd");
                     }
                 } else {
-                    println!("First date could not be parsed");
+                    println!("First date could not be parsed. Expecting YYYY-mm-dd");
                 }
             }
+        } else if input.contains("resend") {
+            tx_request_from_main.send(Request::Resend)?;
         }
         input.clear();
     }
@@ -89,13 +91,14 @@ fn send_loop(
     send_time: &NaiveTime,
     reset_time: &NaiveTime,
     output_path: &str,
-    maintainer:&str,
-    alert_day:&Weekday,
+    maintainer: &str,
+    alert_day: &Weekday,
     soldiers_table: HashMap<NaiveDate, Soldier>,
 ) {
     let mut soldiers_table = soldiers_table;
     let mut is_sent = false;
     let mut status = String::new();
+    let mut resend = false;
     loop {
         if let Ok(req) = receiving.recv() {
             //refresh variables
@@ -103,15 +106,22 @@ fn send_loop(
                 is_sent = false;
                 status.clear();
             }
-            if !is_sent && is_close_to_time(send_time) {
+            if !is_sent && is_close_to_time(send_time) || resend {
                 match get_soldier(&soldiers_table, 0) {
                     Some(soldier) => {
                         if let Ok(res) =
                             send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE))
                         {
                             //DEBUG
-                            send_to("***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE)).unwrap();
-                            let num: u32 = res.split_whitespace().filter(|s|s.parse::<u32>().is_ok()).next().get_or_insert("0").parse().unwrap();
+                            send_to("***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE))
+                                .unwrap();
+                            let num: u32 = res
+                                .split_whitespace()
+                                .filter(|s| s.parse::<u32>().is_ok())
+                                .next()
+                                .get_or_insert("0")
+                                .parse()
+                                .unwrap();
                             if num > 0 {
                                 is_sent = true;
                                 status = res;
@@ -119,28 +129,28 @@ fn send_loop(
                                 is_sent = false;
                                 status = res;
                             }
-                        }
-                        else{
-                        status="Failed".to_string();
-                        is_sent=false;
+                        } else {
+                            status = "Failed".to_string();
+                            is_sent = false;
                         }
                     }
                     None => {
-                        status="No soldier found".to_string();
+                        status = "No soldier found".to_string();
                     }
                 }
 
                 //send to maintainer
-                if now.date().weekday()==*alert_day{
+                if chrono::Local::now().date().weekday() == *alert_day {
                     send_to(maintainer, "Maintainer alert").unwrap();
                 }
-            } 
+                resend = false;
+            }
             match req {
                 Request::Status => {
                     transmiting
                         .send(Status {
                             sent_today: is_sent,
-                            status:status.to_string(),
+                            status: status.to_string(),
                             todays_soldier: get_soldier(&soldiers_table, 0),
                             tommorows_soldier: get_soldier(&soldiers_table, 1),
                         })
@@ -156,6 +166,9 @@ fn send_loop(
                     } else {
                         println!("Dates provided don't exist in table");
                     }
+                }
+                Request::Resend => {
+                    resend = true;
                 }
             }
         }
@@ -174,14 +187,18 @@ fn get_soldier(soldiers_table: &HashMap<NaiveDate, Soldier>, add_days: i64) -> O
         .cloned()
 }
 
-fn is_close_to_time(time:&NaiveTime)->bool{
-    (NaiveTime::from(chrono::Local::now().time()) - *time).num_minutes().abs()<=1
+fn is_close_to_time(time: &NaiveTime) -> bool {
+    (NaiveTime::from(chrono::Local::now().time()) - *time)
+        .num_minutes()
+        .abs()
+        <= 1
 }
 
 enum Request {
     Status,
     Refresh,
     Switch(NaiveDate, NaiveDate),
+    Resend,
 }
 
 struct Status {

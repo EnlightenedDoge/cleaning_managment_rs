@@ -39,8 +39,14 @@ pub fn create_table(exclude_dates: bool) -> Result<Vec<Row>, Box<dyn std::error:
             day: date.date.weekday().to_string(),
         })?;
     }
-    std::fs::write(format!("{}output_table.csv",config.output_path), String::from_utf8(wtr_raw.into_inner()?)?)?;
-    std::fs::write(format!("{}beautified_table.csv",config.output_path), String::from_utf8(wtr_beaut.into_inner()?)?)?;
+    std::fs::write(
+        format!("{}output_table.csv", config.output_path),
+        String::from_utf8(wtr_raw.into_inner()?)?,
+    )?;
+    std::fs::write(
+        format!("{}beautified_table.csv", config.output_path),
+        String::from_utf8(wtr_beaut.into_inner()?)?,
+    )?;
     Ok(dates)
 }
 
@@ -59,7 +65,7 @@ pub struct ConfigRaw {
     pub send_time: String,
     pub reset_time: String,
     pub maintainer: String,
-    pub alert_day:String,
+    pub alert_day: String,
 }
 
 struct ConfigMaker {
@@ -85,8 +91,8 @@ pub struct Raw {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct BeautyRaw{
-    pub day:String,
-    pub date:String,
-    pub name:String,
+pub struct BeautyRaw {
+    pub day: String,
+    pub date: String,
+    pub name: String,
 }
