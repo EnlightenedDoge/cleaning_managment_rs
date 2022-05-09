@@ -52,14 +52,14 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
                 "sent_today: {}
 sent status: {}
 today's soldier: {:?}
-tommorow's soldier: {:?}
+tomorrow's soldier: {:?}
 now: {},
 send time: {}
 reset time: {}",
                 status.sent_today,
                 status.status,
                 status.todays_soldier,
-                status.tommorows_soldier,
+                status.tomorrows_soldier,
                 chrono::Local::now(),
                 config.send_time,
                 config.send_time > config.reset_time
@@ -90,7 +90,7 @@ reset time: {}",
 }
 
 fn action_loop(
-    transmiting: mpsc::Sender<Status>,
+    transmitting: mpsc::Sender<Status>,
     receiving: mpsc::Receiver<Request>,
     send_time: &NaiveTime,
     reset_time: &NaiveTime,
@@ -111,12 +111,12 @@ fn action_loop(
                
                 //Send back formatted status of current and next 
                 Request::Status => {
-                    transmiting
+                    transmitting
                         .send(Status {
                             sent_today: is_sent,
                             status: status.to_string(),
                             todays_soldier: get_soldier_from_table(&soldiers_table, 0),
-                            tommorows_soldier: get_soldier_from_table(&soldiers_table, 1),
+                            tomorrows_soldier: get_soldier_from_table(&soldiers_table, 1),
                         })
                         .unwrap();
                 }
@@ -168,10 +168,9 @@ fn tick(soldiers_table: &HashMap<NaiveDate, Soldier>, send_time: &NaiveTime, res
 
 fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, String) {
     match get_soldier_from_table(&soldiers_table, 0) {
+        
         Some(soldier) => {
             if let Ok(res) = send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE)) {
-                //DEBUG
-                send_to("***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE)).unwrap();
                 let num: u32 = res
                     .split_whitespace()
                     .filter(|s| s.parse::<u32>().is_ok())
@@ -227,5 +226,5 @@ struct Status {
     sent_today: bool,
     status: String,
     todays_soldier: Option<Soldier>,
-    tommorows_soldier: Option<Soldier>,
+    tomorrows_soldier: Option<Soldier>,
 }
