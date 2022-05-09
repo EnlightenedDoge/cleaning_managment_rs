@@ -37,11 +37,13 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
         rx_request_clock.send(Request::Refresh).unwrap();
     });
 
+    //main thread
     '_user_interface: loop {
         print!(">");
         std::io::stdout().flush()?;
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).unwrap();
+
         if input.contains("status") {
             tx_request_from_main.send(Request::Status)?;
             println!("fetching data:");
@@ -82,6 +84,14 @@ reset time: {}",
             }
         } else if input.contains("resend") {
             tx_request_from_main.send(Request::Resend)?;
+        } else if input.contains("help") {
+            println!(
+                "Options:
+status                            - Prints current status.
+switch YYYY-mm-dd YYYY-mm-dd      - Switch between two given dates and update the original table.
+resend                            - Send the message again disregarding built-in limitation.
+help                              - Display this text."
+            )
         }
         input.clear();
     }
