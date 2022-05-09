@@ -37,9 +37,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
         rx_request_clock.send(Request::Refresh).unwrap();
     });
 
-    
-    '_user_interface: 
-    loop {
+    '_user_interface: loop {
         print!(">");
         std::io::stdout().flush()?;
         let mut input = String::new();
@@ -103,13 +101,12 @@ fn action_loop(
     let mut is_sent = false;
     let mut status = String::new();
     let mut resend = false;
-    
+
     //Wait for thread to send a request
     loop {
         if let Ok(req) = receiving.recv() {
             match req {
-               
-                //Send back formatted status of current and next 
+                //Send back formatted status of current and next
                 Request::Status => {
                     transmitting
                         .send(Status {
@@ -120,13 +117,22 @@ fn action_loop(
                         })
                         .unwrap();
                 }
-               
+
                 //basic functionality. Send to specified on specified time
                 Request::Refresh => {
-                    (is_sent,status) = tick(&soldiers_table,send_time,reset_time,alert_day,maintainer,is_sent,status,resend);
-                    resend=false;
+                    (is_sent, status) = tick(
+                        &soldiers_table,
+                        send_time,
+                        reset_time,
+                        alert_day,
+                        maintainer,
+                        is_sent,
+                        status,
+                        resend,
+                    );
+                    resend = false;
                 }
-               
+
                 //switch names of between two dates
                 Request::Switch(date1, date2) => {
                     if soldiers_table.contains_key(&date1) && soldiers_table.contains_key(&date2) {
@@ -138,7 +144,7 @@ fn action_loop(
                         println!("Dates provided don't exist in table");
                     }
                 }
-               
+
                 //toggle flag for sending a message again
                 Request::Resend => {
                     resend = true;
@@ -148,7 +154,16 @@ fn action_loop(
     }
 }
 
-fn tick(soldiers_table: &HashMap<NaiveDate, Soldier>, send_time: &NaiveTime, reset_time:&NaiveTime, alert_day:&Weekday, maintainer: &str, is_sent:bool,status:String, resend:bool)->(bool,String){
+fn tick(
+    soldiers_table: &HashMap<NaiveDate, Soldier>,
+    send_time: &NaiveTime,
+    reset_time: &NaiveTime,
+    alert_day: &Weekday,
+    maintainer: &str,
+    is_sent: bool,
+    status: String,
+    resend: bool,
+) -> (bool, String) {
     let mut status = status;
     let mut is_sent = is_sent;
     if is_close_to_time(reset_time) {
@@ -163,12 +178,11 @@ fn tick(soldiers_table: &HashMap<NaiveDate, Soldier>, send_time: &NaiveTime, res
             send_to(maintainer, "Maintainer alert").unwrap();
         }
     }
-    (is_sent,status)
+    (is_sent, status)
 }
 
 fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, String) {
     match get_soldier_from_table(&soldiers_table, 0) {
-        
         Some(soldier) => {
             if let Ok(res) = send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE)) {
                 let num: u32 = res

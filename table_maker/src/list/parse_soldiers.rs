@@ -1,5 +1,5 @@
 use csv::Reader;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Soldier {
@@ -7,14 +7,14 @@ pub struct Soldier {
     pub phone: String,
 }
 
-pub fn parse_candidates_from_file(file: &str)->Result<Vec<Soldier>, Box<dyn std::error::Error>>{
+pub fn parse_candidates_from_file(file: &str) -> Result<Vec<Soldier>, Box<dyn std::error::Error>> {
     let data = std::fs::read_to_string(file)?;
     let mut people = Vec::new();
     let mut rdr = Reader::from_reader(data.as_bytes());
     let iter = rdr
-            .deserialize()
-            .map(|x: Result<Soldier, csv::Error>| x.unwrap());
-    for row in iter{
+        .deserialize()
+        .map(|x: Result<Soldier, csv::Error>| x.unwrap());
+    for row in iter {
         people.push(row);
     }
     Ok(people)
