@@ -3,7 +3,7 @@ mod list;
 use chrono::Datelike;
 use chrono::NaiveDate;
 use csv::Writer;
-use heb_cal::exclued_holidays_from_file;
+use heb_cal::exclude_holidays_from_file;
 use heb_cal::generate_heb;
 pub use list::Soldier;
 use list::*;
@@ -11,16 +11,16 @@ use serde::Deserialize;
 use serde::Serialize;
 const HEBDATE_PATH: &str = "./config/heb_date.json";
 const EXCLUDED_DATES_PATH: &str = "./config/excluded_hebcal.json";
-const SOLDIERS_PATH: &str = "./config/NameSheet.json";
+const SOLDIERS_PATH: &str = "./config/names.csv";
 pub const CONFIG_PATH: &str = "./config/config.json";
 
 pub fn create_table(exclude_dates: bool) -> Result<Vec<Row>, Box<dyn std::error::Error>> {
     let config = load_config()?;
     let mut heb_cal = generate_heb()?;
     if exclude_dates {
-        heb_cal = exclued_holidays_from_file(heb_cal, EXCLUDED_DATES_PATH)?;
+        heb_cal = exclude_holidays_from_file(heb_cal, EXCLUDED_DATES_PATH)?;
     }
-    let mut soldiers = list::parse_soldiers_from_file(SOLDIERS_PATH)?;
+    let mut soldiers = list::parse_candidates_from_file(SOLDIERS_PATH)?;
     soldiers.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
     let dates = get_dates(soldiers, heb_cal, config.start_date, config.range);
     let mut wtr_raw = Writer::from_writer(vec![]);

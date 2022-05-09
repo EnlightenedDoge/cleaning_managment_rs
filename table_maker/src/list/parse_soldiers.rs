@@ -1,32 +1,23 @@
-use serde::Serialize;
-use serde_json::{self, from_str, Value};
+use csv::Reader;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Soldier {
     pub name: String,
     pub phone: String,
 }
 
-pub fn parse_soldiers_from_file(file: &str) -> Result<Vec<Soldier>, Box<dyn std::error::Error>> {
+pub fn parse_candidates_from_file(file: &str)->Result<Vec<Soldier>, Box<dyn std::error::Error>>{
     let data = std::fs::read_to_string(file)?;
-    let json: Value = from_str(&data)?;
-    let json_soldiers = json["soldiers"]
-        .as_array()
-        .expect("No \"soldiers\" array found in file");
-    let mut soldiers = Vec::<Soldier>::new();
-    for soldier in json_soldiers {
-        soldiers.push(Soldier {
-            name: soldier["Name"]
-                .as_str()
-                .expect("No soldier name found")
-                .to_string(),
-            phone: soldier["Number"]
-                .as_str()
-                .expect("No soldier number found")
-                .to_string(),
-        });
+    let mut people = Vec::new();
+    let mut rdr = Reader::from_reader(data.as_bytes());
+    let iter = rdr
+            .deserialize()
+            .map(|x: Result<Soldier, csv::Error>| x.unwrap());
+    for row in iter{
+        people.push(row);
     }
-    Ok(soldiers)
+    Ok(people)
 }
 
 #[cfg(test)]
@@ -34,24 +25,14 @@ mod tests {
     use super::*;
     #[test]
     fn parse_soldiers() {
-        let s = r#"{
-            "commanders": [
-              {
-                "Name": "***REMOVED*** ***REMOVED***"
-              }
-            ],
-            "soldiers": [
-              {
-                "Name":"***REMOVED***",
-                "Number":"***REMOVED***"
-              }]
-            }"#;
-        std::fs::write("./test", s).expect("Failed to write to test file");
+        let s = r#"name,phone
+amichai,***REMOVED***"#;
+        std::fs::write("./test.csv", s).expect("Failed to write to test file");
         let vec = vec![Soldier {
-            name: "***REMOVED***".to_string(),
+            name: "amichai".to_string(),
             phone: "***REMOVED***".to_string(),
         }];
-        let parsed = parse_soldiers_from_file("./test").expect("failed test");
+        let parsed = parse_candidates_from_file("./test.csv").expect("failed test");
         assert_eq!(vec.len(), parsed.len());
         assert_eq!(vec[0].name, parsed[0].name);
         assert_eq!(vec[0].phone, parsed[0].phone);

@@ -34,7 +34,7 @@ fn get_struct(json: &str) -> Result<Vec<HebDate>, Box<dyn std::error::Error>> {
     Ok(items)
 }
 
-pub fn exclued_holidays_from_file(
+pub fn exclude_holidays_from_file(
     dates: Vec<HebDate>,
     file: &str,
 ) -> Result<Vec<HebDate>, Box<dyn std::error::Error>> {
