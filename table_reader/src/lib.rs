@@ -130,7 +130,7 @@ fn action_loop(
 
                 //basic functionality. Send to specified on specified time
                 Request::Refresh => {
-                    (is_sent, status) = tick(
+                    (is_sent, status) = check_can_send(
                         &soldiers_table,
                         send_time,
                         reset_time,
@@ -164,7 +164,7 @@ fn action_loop(
     }
 }
 
-fn tick(
+fn check_can_send(
     soldiers_table: &HashMap<NaiveDate, Soldier>,
     send_time: &NaiveTime,
     reset_time: &NaiveTime,
@@ -203,7 +203,7 @@ fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, Strin
                     .parse()
                     .unwrap();
                 if num > 0 {
-                    (false, res)
+                    (true, res)
                 } else {
                     (false, res)
                 }
