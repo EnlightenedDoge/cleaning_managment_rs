@@ -159,6 +159,57 @@ fn action_loop(
                 Request::Resend => {
                     resend = true;
                 }
+                Request::Drop(drop_type, date) => {
+                    if soldiers_table.contains_key(&date) {
+                        match drop_type {
+                            DropType::Clean => _ = soldiers_table.remove(&date),
+                            DropType::Collapse => {
+                                //Get dates from and including given point and sort them.
+                                let mut dates: Vec<NaiveDate> = soldiers_table
+                                    .keys()
+                                    .filter(|d| **d >= date)
+                                    .cloned()
+                                    .collect();
+                                dates.sort();
+                                let mut iter = dates.into_iter();
+
+                                //Iterate over dates. Put the next date's value into the current one. Delete last one.
+                                while let Some(date) = iter.next() {
+                                    if let Some(next_date) = iter.next() {
+                                        let next_value =
+                                            soldiers_table.get(&next_date).unwrap().clone();
+                                        soldiers_table.entry(date).and_modify(|e| *e = next_value);
+                                    } else {
+                                        soldiers_table.remove(&date);
+                                    }
+                                }
+                            }
+                            DropType::Extend => {
+                                //Add "Next eligible date" functionality to table maker.
+                                //Move modifying functionality to table_maker.
+                                let latest = soldiers_table.keys().max();
+                                let mut dates: Vec<NaiveDate> = soldiers_table
+                                    .keys()
+                                    .filter(|d| **d >= date)
+                                    .cloned()
+                                    .collect();
+                                dates.sort();
+                                let mut iter = dates.into_iter();
+
+                                //Iterate over dates. Put the next date's value into the current one. Delete first one.
+                                while let Some(date) = iter.next_back() {
+                                    if let Some(prev_date) = iter.next_back() {
+                                        let prev_value =
+                                            soldiers_table.get(&prev_date).unwrap().clone();
+                                        soldiers_table.entry(date).and_modify(|e| *e = prev_value);
+                                    } else {
+                                        soldiers_table.remove(&date);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -244,6 +295,7 @@ enum Request {
     Refresh,
     Switch(NaiveDate, NaiveDate),
     Resend,
+    Drop(DropType, NaiveDate),
 }
 
 struct Status {
@@ -251,4 +303,10 @@ struct Status {
     status: String,
     todays_soldier: Option<Soldier>,
     tomorrows_soldier: Option<Soldier>,
+}
+
+enum DropType {
+    Clean,
+    Collapse,
+    Extend,
 }
