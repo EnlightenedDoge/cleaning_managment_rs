@@ -130,7 +130,7 @@ fn action_loop(
 
                 //basic functionality. Send to specified on specified time
                 Request::Refresh => {
-                    (is_sent, status) = tick(
+                    (is_sent, status) = check_can_send(
                         &soldiers_table,
                         send_time,
                         reset_time,
@@ -215,7 +215,7 @@ fn action_loop(
     }
 }
 
-fn tick(
+fn check_can_send(
     soldiers_table: &HashMap<NaiveDate, Soldier>,
     send_time: &NaiveTime,
     reset_time: &NaiveTime,
@@ -235,8 +235,9 @@ fn tick(
         (is_sent, status) = send_from_table(&soldiers_table);
 
         //send to maintainer
-        if chrono::Local::now().date().weekday() == *alert_day {
+        if !is_sent && chrono::Local::now().date().weekday() == *alert_day {
             send_to(maintainer, "Maintainer alert").unwrap();
+            is_sent=true;
         }
     }
     (is_sent, status)
@@ -254,7 +255,7 @@ fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, Strin
                     .parse()
                     .unwrap();
                 if num > 0 {
-                    (false, res)
+                    (true, res)
                 } else {
                     (false, res)
                 }
