@@ -184,8 +184,9 @@ fn check_can_send(
         (is_sent, status) = send_from_table(&soldiers_table);
 
         //send to maintainer
-        if chrono::Local::now().date().weekday() == *alert_day {
+        if !is_sent && chrono::Local::now().date().weekday() == *alert_day {
             send_to(maintainer, "Maintainer alert").unwrap();
+            is_sent=true;
         }
     }
     (is_sent, status)
