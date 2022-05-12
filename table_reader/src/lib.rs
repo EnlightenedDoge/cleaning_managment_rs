@@ -184,7 +184,7 @@ fn action_loop(
                                     }
                                 }
                             }
-                            DropType::Extend => {
+                            DropType::Postpone => {
                                 //Add "Next eligible date" functionality to table maker.
                                 //Move modifying functionality to table_maker.
                                 let latest = soldiers_table.keys().max();
@@ -196,7 +196,6 @@ fn action_loop(
                                 dates.sort();
                                 let mut iter = dates.into_iter();
 
-                                //Iterate over dates. Put the next date's value into the current one. Delete first one.
                                 while let Some(date) = iter.next_back() {
                                     if let Some(prev_date) = iter.next_back() {
                                         let prev_value =
@@ -309,5 +308,5 @@ struct Status {
 enum DropType {
     Clean,
     Collapse,
-    Extend,
+    Postpone,
 }

@@ -62,6 +62,7 @@ pub mod construction {
         pub reset_time: String,
         pub maintainer: String,
         pub alert_day: String,
+        pub weekend:Vec<u16>,
     }
 
     struct ConfigMaker {

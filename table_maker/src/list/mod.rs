@@ -59,12 +59,12 @@ pub fn get_dates(
 fn get_dates_list(start_date: NaiveDate, time_period: usize) -> Vec<NaiveDate> {
     start_date
         .iter_days()
-        .take(time_period)
         .filter(|p| {
             p.weekday() != Weekday::Thu
                 && p.weekday() != Weekday::Fri
                 && p.weekday() != Weekday::Sat
         })
+        .take(time_period)
         .collect()
 }
 
