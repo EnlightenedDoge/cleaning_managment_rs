@@ -1,5 +1,8 @@
+use std::str::FromStr;
+
 use chrono::NaiveDate;
 
+use serde::{Serialize, Deserialize};
 use serde_json::{self, from_str, Value};
 
 use crate::HEBDATE_PATH;
@@ -64,6 +67,17 @@ pub struct HebDate {
     pub date: NaiveDate,
 }
 
+impl HebDate{
+    pub fn from(raw:HebDateRaw)->Self{
+        Self{title:raw.title,
+        date:NaiveDate::parse_from_str(&raw.date, "%Y-%m-%d").expect("Failed to read Date from heb_dates file")}
+    }
+}
+#[derive(Debug,Serialize,Deserialize)]
+pub struct HebDateRaw{
+    pub title:String,
+    pub date:String,
+}
 // #[cfg(test)]
 // mod tests {
 //     use chrono::NaiveDate;
