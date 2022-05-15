@@ -21,13 +21,9 @@ pub mod construction {
         let dates = get_dates(soldiers, heb_cal, config.start_date, config.range);
         let mut wtr_raw = Writer::from_writer(vec![]);
         let mut wtr_beaut = Writer::from_writer(vec![]);
-        for date in dates.iter() {
-            wtr_raw.serialize(Raw {
-                name: date.soldier.name.clone(),
-                date: date.date.to_string(),
-                number: date.soldier.phone.clone(),
-            })?;
-        }
+        
+        let ser:Vec<Raw> = dates.iter().map(|x| Raw{date:x.date.to_string(),name:x.soldier.name.clone(),number:x.soldier.phone.clone()}).collect();
+        write_csv(&format!("{}output_table.csv", config.output_path), &ser)?;
         for date in dates.iter() {
             wtr_beaut.serialize(BeautyRaw {
                 name: date.soldier.name.clone(),
@@ -51,6 +47,15 @@ pub mod construction {
         let config: ConfigRaw = serde_json::from_str(&config)?;
         let config = ConfigMaker::from(config);
         Ok(config)
+    }
+
+    fn write_csv<T>(file_path:&str, t:&Vec<T>)->Result<(),Box<dyn std::error::Error>>where T:Serialize{
+        let mut table = Writer::from_writer(vec![]);
+        for row in t {
+            table.serialize(row)?;
+        }
+        std::fs::write(file_path, String::from_utf8(table.into_inner()?)?);
+        Ok(())
     }
 
     #[derive(Deserialize)]

@@ -68,8 +68,8 @@ pub struct HebDate {
 }
 
 impl HebDate{
-    pub fn from(raw:HebDateRaw)->Self{
-        Self{title:raw.title,
+    pub fn from(raw:&HebDateRaw)->Self{
+        Self{title:raw.title.clone(),
         date:NaiveDate::parse_from_str(&raw.date, "%Y-%m-%d").expect("Failed to read Date from heb_dates file")}
     }
 }
@@ -77,6 +77,11 @@ impl HebDate{
 pub struct HebDateRaw{
     pub title:String,
     pub date:String,
+}
+impl HebDateRaw{
+    pub fn from(heb_date:&HebDate)->Self{
+        Self { title: heb_date.title.clone(), date: format!("{}",heb_date.date.format("%Y-%m-%d")) }
+    }
 }
 // #[cfg(test)]
 // mod tests {
