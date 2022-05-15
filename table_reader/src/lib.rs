@@ -13,6 +13,7 @@ const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** 
 
 pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
     let config = load_config()?;
+    let thread_config = config.clone();
     let table = get_soldiers_table(&format!("{}output_table.csv", config.output_path))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
     let (tx_status, rx_status) = mpsc::channel();
@@ -23,11 +24,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
         action_loop(
             tx_status,
             rx_request,
-            &config.send_time,
-            &config.reset_time,
-            &config.output_path,
-            &config.maintainer,
-            &config.alert_day,
+            &thread_config,
             table,
         )
     });
@@ -100,13 +97,14 @@ help                              - Display this text."
 fn action_loop(
     transmitting: mpsc::Sender<Status>,
     receiving: mpsc::Receiver<Request>,
-    send_time: &NaiveTime,
-    reset_time: &NaiveTime,
-    output_path: &str,
-    maintainer: &str,
-    alert_day: &Weekday,
+    config:&ConfigReader,
     soldiers_table: HashMap<NaiveDate, Soldier>,
 ) {
+    let send_time = config.send_time;
+    let reset_time = config.reset_time;
+    let output_path = &config.output_path;
+    let maintainer = &config.maintainer;
+    let alert_day = config.alert_day;
     let mut soldiers_table = soldiers_table;
     let mut is_sent = false;
     let mut status = String::new();
@@ -132,10 +130,10 @@ fn action_loop(
                 Request::Refresh => {
                     (is_sent, status) = check_can_send(
                         &soldiers_table,
-                        send_time,
-                        reset_time,
-                        alert_day,
-                        maintainer,
+                        &send_time,
+                        &reset_time,
+                        &alert_day,
+                        &maintainer,
                         is_sent,
                         status,
                         resend,
@@ -149,7 +147,7 @@ fn action_loop(
                         let sol = soldiers_table.get(&date1).unwrap().clone();
                         soldiers_table.insert(date1, soldiers_table.get(&date2).unwrap().clone());
                         soldiers_table.insert(date2, sol);
-                        reader::table::update_soldiers_table(output_path, &soldiers_table).unwrap();
+                        reader::table::update_soldiers_table(&output_path, &soldiers_table).unwrap();
                     } else {
                         println!("Dates provided don't exist in table");
                     }
@@ -187,24 +185,41 @@ fn action_loop(
                             DropType::Postpone => {
                                 //Add "Next eligible date" functionality to table maker.
                                 //Move modifying functionality to table_maker.
-                                let latest = soldiers_table.keys().max();
+                                let latest = soldiers_table.keys().max().unwrap();
+                                let mut next_date = *latest;
+                                if let Ok(excluded_dates) = reader::table::get_excluded_dates(&config){
+                                    
+                                    let date_check = |x:&NaiveDate| !config.weekend.contains(&x.weekday())&&excluded_dates.iter().filter(|p|p.date==*x).count()==0;
+                                    let mut next = latest.clone();
+                                    'days: for _i in [..60]{
+                                        next = next.succ();
+                                        
+                                        if date_check(&next){
+                                            next_date=next;
+                                            break 'days;
+                                        }
+                                    }
+                                }
+                                if *latest>=next_date{
+                                    continue;
+                                }
                                 let mut dates: Vec<NaiveDate> = soldiers_table
                                     .keys()
                                     .filter(|d| **d >= date)
                                     .cloned()
                                     .collect();
+                                dates.push(next_date);
                                 dates.sort();
-                                let mut iter = dates.into_iter();
-
-                                while let Some(date) = iter.next_back() {
-                                    if let Some(prev_date) = iter.next_back() {
-                                        let prev_value =
-                                            soldiers_table.get(&prev_date).unwrap().clone();
-                                        soldiers_table.entry(date).and_modify(|e| *e = prev_value);
-                                    } else {
-                                        soldiers_table.remove(&date);
-                                    }
-                                }
+                                // let mut iter =dates.into_iter();
+                                // while let Some(date) = iter.next() {
+                                //     if let Some(next_date) = iter.next() {
+                                //         let next_value =
+                                //             soldiers_table.get(&next_date).unwrap().clone();
+                                //         soldiers_table.entry(date).and_modify(|e| *e = next_value);
+                                //     } else {
+                                //         soldiers_table.remove(&date);
+                                //     }
+                                // }
                             }
                         }
                     }
@@ -236,7 +251,7 @@ fn check_can_send(
         //send to maintainer
         if !is_sent && chrono::Local::now().date().weekday() == *alert_day {
             send_to(maintainer, "Maintainer alert").unwrap();
-            is_sent=true;
+            is_sent = true;
         }
     }
     (is_sent, status)

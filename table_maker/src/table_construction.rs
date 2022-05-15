@@ -1,4 +1,5 @@
 pub mod construction {
+    use crate::heb_cal::HebDateRaw;
     use crate::heb_cal::exclude_holidays_from_file;
     use crate::heb_cal::generate_heb;
     use crate::list::*;
@@ -18,27 +19,37 @@ pub mod construction {
         }
         let mut soldiers = parse_candidates_from_file(SOLDIERS_PATH)?;
         soldiers.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
-        let dates = get_dates(soldiers, heb_cal, config.start_date, config.range);
-        let mut wtr_raw = Writer::from_writer(vec![]);
-        let mut wtr_beaut = Writer::from_writer(vec![]);
+        let dates = get_dates(&soldiers, &heb_cal, &config.start_date, config.range);
+
+        //create tables to ./output/
+        //Names table to be used by program
+        let raws: Vec<NamesTableRaw> = dates
+            .iter()
+            .map(|x| NamesTableRaw {
+                date: x.date.to_string(),
+                name: x.soldier.name.clone(),
+                number: x.soldier.phone.clone(),
+            })
+            .collect();
+        write_csv(&format!("{}output_table.csv", config.output_path), &raws)?;
         
-        let ser:Vec<Raw> = dates.iter().map(|x| Raw{date:x.date.to_string(),name:x.soldier.name.clone(),number:x.soldier.phone.clone()}).collect();
-        write_csv(&format!("{}output_table.csv", config.output_path), &ser)?;
-        for date in dates.iter() {
-            wtr_beaut.serialize(BeautyRaw {
-                name: date.soldier.name.clone(),
-                date: date.date.to_string(),
-                day: date.date.weekday().to_string(),
-            })?;
-        }
-        std::fs::write(
-            format!("{}output_table.csv", config.output_path),
-            String::from_utf8(wtr_raw.into_inner()?)?,
+        //Names table created for end-user use
+        let raws_beaut: Vec<BeautyNameTableRaw> = dates
+            .iter()
+            .map(|x| BeautyNameTableRaw {
+                date: x.date.to_string(),
+                day: x.date.weekday().to_string(),
+                name: x.soldier.name.clone(),
+            })
+            .collect(); 
+            write_csv(
+     &format!("{}beautified_table.csv", config.output_path),
+           &raws_beaut,
         )?;
-        std::fs::write(
-            format!("{}beautified_table.csv", config.output_path),
-            String::from_utf8(wtr_beaut.into_inner()?)?,
-        )?;
+        //final excluded dates to be used by program as well
+        let final_excluded_dates:Vec<HebDateRaw> = heb_cal.iter().map(|x|HebDateRaw::from(x)).collect();
+        write_csv(&format!("{}excluded_dates.csv",config.output_path), &final_excluded_dates)?;
+            
         Ok(dates)
     }
 
@@ -49,12 +60,15 @@ pub mod construction {
         Ok(config)
     }
 
-    fn write_csv<T>(file_path:&str, t:&Vec<T>)->Result<(),Box<dyn std::error::Error>>where T:Serialize{
+    fn write_csv<T>(file_path: &str, t: &Vec<T>) -> Result<(), Box<dyn std::error::Error>>
+    where
+        T: Serialize,
+    {
         let mut table = Writer::from_writer(vec![]);
         for row in t {
             table.serialize(row)?;
         }
-        std::fs::write(file_path, String::from_utf8(table.into_inner()?)?);
+        std::fs::write(file_path, String::from_utf8(table.into_inner()?)?)?;
         Ok(())
     }
 
@@ -67,7 +81,7 @@ pub mod construction {
         pub reset_time: String,
         pub maintainer: String,
         pub alert_day: String,
-        pub weekend:Vec<u16>,
+        pub weekend: Vec<usize>,
     }
 
     struct ConfigMaker {
@@ -86,14 +100,14 @@ pub mod construction {
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct Raw {
+    pub struct NamesTableRaw {
         pub name: String,
         pub number: String,
         pub date: String,
     }
 
     #[derive(Serialize, Deserialize)]
-    pub struct BeautyRaw {
+    pub struct BeautyNameTableRaw {
         pub day: String,
         pub date: String,
         pub name: String,
