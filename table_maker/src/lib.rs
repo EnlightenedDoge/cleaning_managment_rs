@@ -2,9 +2,9 @@ mod heb_cal;
 mod list;
 pub mod table_construction;
 
+pub use heb_cal::{HebDate, HebDateRaw};
 pub use list::Soldier;
 use list::*;
-pub use heb_cal::{HebDate,HebDateRaw};
 pub use table_construction::construction::{self, ConfigRaw, NamesTableRaw};
 
 const EXCLUDED_DATES_PATH: &str = "./config/excluded_hebcal.json";

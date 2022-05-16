@@ -1,7 +1,7 @@
 pub mod construction {
-    use crate::heb_cal::HebDateRaw;
     use crate::heb_cal::exclude_holidays_from_file;
     use crate::heb_cal::generate_heb;
+    use crate::heb_cal::HebDateRaw;
     use crate::list::*;
     use chrono::Datelike;
     use chrono::NaiveDate;
@@ -32,7 +32,7 @@ pub mod construction {
             })
             .collect();
         write_csv(&format!("{}output_table.csv", config.output_path), &raws)?;
-        
+
         //Names table created for end-user use
         let raws_beaut: Vec<BeautyNameTableRaw> = dates
             .iter()
@@ -41,15 +41,19 @@ pub mod construction {
                 day: x.date.weekday().to_string(),
                 name: x.soldier.name.clone(),
             })
-            .collect(); 
-            write_csv(
-     &format!("{}beautified_table.csv", config.output_path),
-           &raws_beaut,
+            .collect();
+        write_csv(
+            &format!("{}beautified_table.csv", config.output_path),
+            &raws_beaut,
         )?;
         //final excluded dates to be used by program as well
-        let final_excluded_dates:Vec<HebDateRaw> = heb_cal.iter().map(|x|HebDateRaw::from(x)).collect();
-        write_csv(&format!("{}excluded_dates.csv",config.output_path), &final_excluded_dates)?;
-            
+        let final_excluded_dates: Vec<HebDateRaw> =
+            heb_cal.iter().map(|x| HebDateRaw::from(x)).collect();
+        write_csv(
+            &format!("{}excluded_dates.csv", config.output_path),
+            &final_excluded_dates,
+        )?;
+
         Ok(dates)
     }
 

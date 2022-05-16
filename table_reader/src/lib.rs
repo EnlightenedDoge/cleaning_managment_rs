@@ -12,7 +12,7 @@ use table_maker::Soldier;
 const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** ***REMOVED*** ***REMOVED***/ה ***REMOVED*** ***REMOVED*** ***REMOVED***";
 
 pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
-    let config = load_config()?;
+    let config = load_config(reader::CONFIG_PATH)?;
     let thread_config = config.clone();
     let table = get_soldiers_table(&format!("{}output_table.csv", config.output_path))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
@@ -20,14 +20,8 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
     let rx_request_clock = tx_request_from_main.clone();
 
     //run the thread responsible for reading data and sending messages
-    let _logic_thread = thread::spawn(move || {
-        action_loop(
-            tx_status,
-            rx_request,
-            &thread_config,
-            table,
-        )
-    });
+    let _logic_thread =
+        thread::spawn(move || action_loop(tx_status, rx_request, &thread_config, table));
     //Run the thread to tick the logic_thread every set period of time
     let _clock_thread = thread::spawn(move || loop {
         thread::sleep(std::time::Duration::from_secs(10));
@@ -97,7 +91,7 @@ help                              - Display this text."
 fn action_loop(
     transmitting: mpsc::Sender<Status>,
     receiving: mpsc::Receiver<Request>,
-    config:&ConfigReader,
+    config: &ConfigReader,
     soldiers_table: HashMap<NaiveDate, Soldier>,
 ) {
     let send_time = config.send_time;
@@ -147,7 +141,8 @@ fn action_loop(
                         let sol = soldiers_table.get(&date1).unwrap().clone();
                         soldiers_table.insert(date1, soldiers_table.get(&date2).unwrap().clone());
                         soldiers_table.insert(date2, sol);
-                        reader::table::update_soldiers_table(&output_path, &soldiers_table).unwrap();
+                        reader::table::update_soldiers_table(&output_path, &soldiers_table)
+                            .unwrap();
                     } else {
                         println!("Dates provided don't exist in table");
                     }
@@ -159,69 +154,73 @@ fn action_loop(
                 }
                 Request::Drop(drop_type, date) => {
                     if soldiers_table.contains_key(&date) {
-                        match drop_type {
-                            DropType::Clean => _ = soldiers_table.remove(&date),
-                            DropType::Collapse => {
-                                //Get dates from and including given point and sort them.
-                                let mut dates: Vec<NaiveDate> = soldiers_table
-                                    .keys()
-                                    .filter(|d| **d >= date)
-                                    .cloned()
-                                    .collect();
-                                dates.sort();
-                                let mut iter = dates.into_iter();
+                        drop_name(drop_type, date, &mut soldiers_table, config);
+                    }
+                }
+            }
+        }
+    }
+}
 
-                                //Iterate over dates. Put the next date's value into the current one. Delete last one.
-                                while let Some(date) = iter.next() {
-                                    if let Some(next_date) = iter.next() {
-                                        let next_value =
-                                            soldiers_table.get(&next_date).unwrap().clone();
-                                        soldiers_table.entry(date).and_modify(|e| *e = next_value);
-                                    } else {
-                                        soldiers_table.remove(&date);
-                                    }
-                                }
-                            }
-                            DropType::Postpone => {
-                                //Add "Next eligible date" functionality to table maker.
-                                //Move modifying functionality to table_maker.
-                                let latest = soldiers_table.keys().max().unwrap();
-                                let mut next_date = *latest;
-                                if let Ok(excluded_dates) = reader::table::get_excluded_dates(&config){
-                                    
-                                    let date_check = |x:&NaiveDate| !config.weekend.contains(&x.weekday())&&excluded_dates.iter().filter(|p|p.date==*x).count()==0;
-                                    let mut next = latest.clone();
-                                    'days: for _i in [..60]{
-                                        next = next.succ();
-                                        
-                                        if date_check(&next){
-                                            next_date=next;
-                                            break 'days;
-                                        }
-                                    }
-                                }
-                                if *latest>=next_date{
-                                    continue;
-                                }
-                                let mut dates: Vec<NaiveDate> = soldiers_table
-                                    .keys()
-                                    .filter(|d| **d >= date)
-                                    .cloned()
-                                    .collect();
-                                dates.push(next_date);
-                                dates.sort();
-                                // let mut iter =dates.into_iter();
-                                // while let Some(date) = iter.next() {
-                                //     if let Some(next_date) = iter.next() {
-                                //         let next_value =
-                                //             soldiers_table.get(&next_date).unwrap().clone();
-                                //         soldiers_table.entry(date).and_modify(|e| *e = next_value);
-                                //     } else {
-                                //         soldiers_table.remove(&date);
-                                //     }
-                                // }
-                            }
-                        }
+fn drop_name(
+    drop_type: DropType,
+    date: NaiveDate,
+    soldiers_table: &mut HashMap<NaiveDate, Soldier>,
+    config: &ConfigReader,
+) {
+    match drop_type {
+        DropType::Clean => _ = soldiers_table.remove(&date),
+        DropType::Collapse => {
+            //Get dates from and including given point and sort them.
+            let mut dates: Vec<NaiveDate> = soldiers_table
+                .keys()
+                .filter(|d| **d >= date)
+                .cloned()
+                .collect();
+            dates.sort();
+            let mut iter = dates.into_iter();
+
+            //Iterate over dates. Put the next date's value into the current one. Delete last one.
+            while let Some(date) = iter.next() {
+                if let Some(next_date) = iter.next() {
+                    let next_value = soldiers_table.get(&next_date).unwrap().clone();
+                    soldiers_table.entry(date).and_modify(|e| *e = next_value);
+                } else {
+                    soldiers_table.remove(&date);
+                }
+            }
+        }
+        DropType::Postpone => {
+            //Add "Next eligible date" functionality to table maker.
+            //Move modifying functionality to table_maker.
+            let latest = soldiers_table.keys().max().unwrap();
+            if let Ok(excluded_dates) = reader::table::get_excluded_dates(&config) {
+                let mut dates: Vec<NaiveDate> = soldiers_table
+                    .keys()
+                    .filter(|d| **d >= date)
+                    .cloned()
+                    .collect();
+                //find next date that isn't a weekend and isn't in the excluded days section
+                let next_date = latest
+                    .iter_days()
+                    .filter(|x: &NaiveDate| {
+                        !config.weekend.contains(&x.weekday())
+                            && excluded_dates.iter().filter(|p| p.date == *x).count() == 0
+                    })
+                    .next()
+                    .unwrap();
+                dates.push(next_date);
+                dates.sort();
+
+                let mut iter = dates.into_iter();
+
+                //Iterate over dates. Put the next date's value into the current one. Delete last one.
+                while let Some(date) = iter.next_back() {
+                    if let Some(prev_date) = iter.next_back() {
+                        let prev_value = soldiers_table.get(&prev_date).unwrap().clone();
+                        soldiers_table.entry(date).and_modify(|e| *e = prev_value);
+                    } else {
+                        soldiers_table.remove(&date);
                     }
                 }
             }
@@ -324,4 +323,66 @@ enum DropType {
     Clean,
     Collapse,
     Postpone,
+}
+
+#[cfg(test)]
+mod tests{
+    use std::time::Instant;
+
+    use super::*;
+
+    #[test]
+    fn drop_clean(){
+        let mut data = inititate();
+        let following_date = data.name_table.keys().filter(|x|**x>data.drop_date).min().unwrap().clone();
+        let following_name = data.name_table.get(&following_date).unwrap().clone();
+        drop_name(DropType::Clean, data.drop_date, &mut data.name_table, &data.config);
+        assert!(data.name_table.get(&data.drop_date).is_none());
+        assert_eq!(data.name_table.get(&following_date).unwrap().name,following_name.name);
+    }
+
+    struct Data{
+        drop_date: NaiveDate,
+        name_table: HashMap<NaiveDate, Soldier>,
+        config: ConfigReader,
+    }
+
+    fn inititate()->Data{
+        let table = "name,number,date
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-12
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-13
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-24
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-25
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-26
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-27
+***REMOVED*** ***REMOVED***-***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-01
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-02
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-03
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-04
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-08
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-09
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-10
+***REMOVED***  ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-11
+***REMOVED*** ***REMOVED***-***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-15
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-16
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-17
+***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-18";
+        std::fs::write("./test_table.csv", table).unwrap();
+        let config = r#"{
+	"start_date": "***REMOVED***-04-12",
+	"range": ***REMOVED***,
+	"output_path":"./output/",
+	"send_time":"09:00:00",
+	"reset_time":"01:00:00",
+	"maintainer":"***REMOVED***",
+	"alert_day":"5",
+	"weekend":[5,6,7]
+}"#;
+        std::fs::write("./test_config.csv", config).unwrap();
+        let table = reader::table::get_soldiers_table("./test_table.csv").unwrap();
+        let config = reader::config::load_config("./test_config.csv").unwrap();
+        std::fs::remove_file("./test_table.csv").unwrap();
+        std::fs::remove_file("./test_config.csv").unwrap();
+        Data { drop_date: NaiveDate::from_ymd(***REMOVED***,4,26), name_table: table, config: config }
+    }
 }

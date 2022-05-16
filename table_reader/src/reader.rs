@@ -1,11 +1,11 @@
-const CONFIG_PATH: &str = "./config/config.json";
+pub const CONFIG_PATH: &str = "./config/config.json";
 
 pub mod config {
 
     use chrono::{NaiveDate, NaiveTime};
     use table_maker::ConfigRaw;
-    pub fn load_config() -> Result<ConfigReader, Box<dyn std::error::Error>> {
-        let config = std::fs::read_to_string(super::CONFIG_PATH)?;
+    pub fn load_config(config_path:&str) -> Result<ConfigReader, Box<dyn std::error::Error>> {
+        let config = std::fs::read_to_string(config_path)?;
         let config: ConfigRaw = serde_json::from_str(&config)?;
         let config = ConfigReader::from(config);
         Ok(config)
@@ -20,7 +20,7 @@ pub mod config {
         pub reset_time: NaiveTime,
         pub maintainer: String,
         pub alert_day: chrono::Weekday,
-        pub weekend:Vec<chrono::Weekday>,
+        pub weekend: Vec<chrono::Weekday>,
     }
     impl ConfigReader {
         fn from(config: ConfigRaw) -> Self {
@@ -32,7 +32,7 @@ pub mod config {
                 reset_time: NaiveTime::parse_from_str(&config.reset_time, "%H:%M:%S").unwrap(),
                 maintainer: config.maintainer,
                 alert_day: int_to_weekday(config.alert_day.parse().unwrap()),
-                weekend: config.weekend.iter().map(|x|int_to_weekday(*x)).collect(),
+                weekend: config.weekend.iter().map(|x| int_to_weekday(*x)).collect(),
             }
         }
     }
@@ -60,7 +60,7 @@ pub mod table {
 
     use chrono::NaiveDate;
     use csv::{self, Reader, Writer};
-    use table_maker::{NamesTableRaw, Soldier, HebDateRaw};
+    use table_maker::{HebDateRaw, NamesTableRaw, Soldier};
 
     use super::config::ConfigReader;
 
@@ -111,12 +111,14 @@ pub mod table {
         std::fs::write(filepath, data)?;
         Ok(())
     }
-    pub fn get_excluded_dates(conf:&ConfigReader)->Result<Vec<table_maker::HebDate>,Box<dyn std::error::Error>>{
-        let file = std::fs::read_to_string(&format!("{}excluded_dates.csv",&conf.output_path))?;
+    pub fn get_excluded_dates(
+        conf: &ConfigReader,
+    ) -> Result<Vec<table_maker::HebDate>, Box<dyn std::error::Error>> {
+        let file = std::fs::read_to_string(&format!("{}excluded_dates.csv", &conf.output_path))?;
         let mut rdr = Reader::from_reader(file.as_bytes());
         let iter = rdr
             .deserialize()
-            .map(|x: Result <HebDateRaw, csv::Error>| x.unwrap());
-        Ok(iter.map(|x|table_maker::HebDate::from(&x)).collect())
+            .map(|x: Result<HebDateRaw, csv::Error>| x.unwrap());
+        Ok(iter.map(|x| table_maker::HebDate::from(&x)).collect())
     }
 }

@@ -76,7 +76,7 @@ impl HebDate {
         }
     }
 }
-impl Deref for HebDate{
+impl Deref for HebDate {
     type Target = Self;
 
     fn deref(&self) -> &Self::Target {
