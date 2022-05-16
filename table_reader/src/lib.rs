@@ -154,7 +154,7 @@ fn action_loop(
                 }
                 Request::Drop(drop_type, date) => {
                     if soldiers_table.contains_key(&date) {
-                        drop_name(drop_type, date, &mut soldiers_table, config);
+                        drop_name(&mut soldiers_table, drop_type, date, config);
                     }
                 }
             }
@@ -163,9 +163,9 @@ fn action_loop(
 }
 
 fn drop_name(
+    soldiers_table: &mut HashMap<NaiveDate, Soldier>,
     drop_type: DropType,
     date: NaiveDate,
-    soldiers_table: &mut HashMap<NaiveDate, Soldier>,
     config: &ConfigReader,
 ) {
     match drop_type {
@@ -179,15 +179,20 @@ fn drop_name(
                 .collect();
             dates.sort();
             let mut iter = dates.into_iter();
-
+            let mut curr_date = iter.next();
             //Iterate over dates. Put the next date's value into the current one. Delete last one.
-            while let Some(date) = iter.next() {
-                if let Some(next_date) = iter.next() {
-                    let next_value = soldiers_table.get(&next_date).unwrap().clone();
-                    soldiers_table.entry(date).and_modify(|e| *e = next_value);
-                } else {
-                    soldiers_table.remove(&date);
+            while let Some(date) = curr_date {
+                let next_date = iter.next();
+                match next_date {
+                    Some(next_date) => {
+                        let next_value = soldiers_table.get(&next_date).unwrap().clone();
+                        soldiers_table.entry(date).and_modify(|e| *e = next_value);
+                    }
+                    None => {
+                        soldiers_table.remove(&date);
+                    }
                 }
+                curr_date = next_date;
             }
         }
         DropType::Postpone => {
@@ -319,6 +324,7 @@ struct Status {
     tomorrows_soldier: Option<Soldier>,
 }
 
+#[derive(Debug)]
 enum DropType {
     Clean,
     Collapse,
@@ -326,28 +332,77 @@ enum DropType {
 }
 
 #[cfg(test)]
-mod tests{
+mod tests {
     use std::time::Instant;
 
     use super::*;
 
     #[test]
-    fn drop_clean(){
-        let mut data = inititate();
-        let following_date = data.name_table.keys().filter(|x|**x>data.drop_date).min().unwrap().clone();
-        let following_name = data.name_table.get(&following_date).unwrap().clone();
-        drop_name(DropType::Clean, data.drop_date, &mut data.name_table, &data.config);
-        assert!(data.name_table.get(&data.drop_date).is_none());
-        assert_eq!(data.name_table.get(&following_date).unwrap().name,following_name.name);
+    fn drop_clean() {
+        let data = inititate(DropType::Clean);
+        let mut name_table = data.name_table;
+        let drop_date = data.drop_date;
+        let config = data.config;
+        let following_date = name_table
+            .keys()
+            .filter(|x| **x > drop_date)
+            .min()
+            .unwrap()
+            .clone();
+        let following_name = name_table.get(&following_date).unwrap().clone();
+        drop_name(&mut name_table, DropType::Clean, drop_date, &config);
+        assert!(name_table.get(&drop_date).is_none());
+        assert_eq!(
+            name_table.get(&following_date).unwrap().name,
+            following_name.name
+        );
     }
 
-    struct Data{
+    #[test]
+    fn drop_collapse() {
+        let data = inititate(DropType::Collapse);
+        let mut name_table = data.name_table;
+        let drop_date = data.drop_date;
+        let config = data.config;
+
+        let following_date = name_table
+            .keys()
+            .filter(|x| **x > drop_date)
+            .min()
+            .unwrap()
+            .clone();
+        let following_name = name_table.get(&following_date).unwrap().clone();
+
+        let last_date = name_table.keys().max().unwrap().clone();
+
+        drop_name(&mut name_table, DropType::Collapse, drop_date, &config);
+        let mut srt = name_table
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<(NaiveDate, Soldier)>>();
+        srt.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
+
+        assert!(name_table.get(&drop_date).unwrap().name == following_name.name);
+        assert!(!name_table.keys().any(|x| *x == last_date));
+        assert!(
+            name_table
+                .keys()
+                .filter(|x| config.weekend.contains(&x.weekday()))
+                .count()
+                == 0
+        );
+        for (k, v) in srt.iter() {
+            println!("{}, {}", k.to_string(), v.name);
+        }
+    }
+
+    struct Data {
         drop_date: NaiveDate,
         name_table: HashMap<NaiveDate, Soldier>,
         config: ConfigReader,
     }
 
-    fn inititate()->Data{
+    fn inititate(drop_type: DropType) -> Data {
         let table = "name,number,date
 ***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-12
 ***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-13
@@ -367,7 +422,8 @@ mod tests{
 ***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-16
 ***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-17
 ***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-18";
-        std::fs::write("./test_table.csv", table).unwrap();
+        let table_path = format!("./test_table_{:?}.csv", drop_type);
+        std::fs::write(&table_path, table).unwrap();
         let config = r#"{
 	"start_date": "***REMOVED***-04-12",
 	"range": ***REMOVED***,
@@ -378,11 +434,17 @@ mod tests{
 	"alert_day":"5",
 	"weekend":[5,6,7]
 }"#;
-        std::fs::write("./test_config.csv", config).unwrap();
-        let table = reader::table::get_soldiers_table("./test_table.csv").unwrap();
-        let config = reader::config::load_config("./test_config.csv").unwrap();
-        std::fs::remove_file("./test_table.csv").unwrap();
-        std::fs::remove_file("./test_config.csv").unwrap();
-        Data { drop_date: NaiveDate::from_ymd(***REMOVED***,4,26), name_table: table, config: config }
+        let config_path = format!("./test_config_{:?}.csv", drop_type);
+
+        std::fs::write(&config_path, config).unwrap();
+        let table = reader::table::get_soldiers_table(&table_path).unwrap();
+        let config = reader::config::load_config(&config_path).unwrap();
+        std::fs::remove_file(&table_path).unwrap();
+        std::fs::remove_file(&config_path).unwrap();
+        Data {
+            drop_date: NaiveDate::from_ymd(***REMOVED***, 4, 26),
+            name_table: table,
+            config,
+        }
     }
 }

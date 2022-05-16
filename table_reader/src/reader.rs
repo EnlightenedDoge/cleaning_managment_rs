@@ -4,7 +4,7 @@ pub mod config {
 
     use chrono::{NaiveDate, NaiveTime};
     use table_maker::ConfigRaw;
-    pub fn load_config(config_path:&str) -> Result<ConfigReader, Box<dyn std::error::Error>> {
+    pub fn load_config(config_path: &str) -> Result<ConfigReader, Box<dyn std::error::Error>> {
         let config = std::fs::read_to_string(config_path)?;
         let config: ConfigRaw = serde_json::from_str(&config)?;
         let config = ConfigReader::from(config);
