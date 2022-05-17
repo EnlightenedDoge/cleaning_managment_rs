@@ -362,6 +362,7 @@ mod tests {
     fn drop_collapse() {
         let data = inititate(DropType::Collapse);
         let mut name_table = data.name_table;
+        let org_table = name_table.clone();
         let drop_date = data.drop_date;
         let config = data.config;
 
@@ -376,11 +377,6 @@ mod tests {
         let last_date = name_table.keys().max().unwrap().clone();
 
         drop_name(&mut name_table, DropType::Collapse, drop_date, &config);
-        let mut srt = name_table
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect::<Vec<(NaiveDate, Soldier)>>();
-        srt.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
 
         assert!(name_table.get(&drop_date).unwrap().name == following_name.name);
         assert!(!name_table.keys().any(|x| *x == last_date));
@@ -391,8 +387,24 @@ mod tests {
                 .count()
                 == 0
         );
-        for (k, v) in srt.iter() {
-            println!("{}, {}", k.to_string(), v.name);
+        let mut res = name_table
+            .iter()
+            .filter(|x| *x.0 >= drop_date)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<(NaiveDate, Soldier)>>();
+        res.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
+
+        let mut org = org_table
+            .iter()
+            .filter(|x| *x.0 >= drop_date)
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect::<Vec<(NaiveDate, Soldier)>>();
+        org.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
+        let mut org_iter = org.iter();
+        _ = org_iter.next();
+        let zipped = org_iter.zip(res.iter());
+        for (org, res) in zipped {
+            assert_eq!(org.1.name, res.1.name);
         }
     }
 
