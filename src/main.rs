@@ -1,6 +1,8 @@
 use clap::Parser;
 use table_maker::create_table;
 
+mod config;
+
 #[derive(Parser)]
 #[clap(author, about, long_about = None)]
 struct Cli {
