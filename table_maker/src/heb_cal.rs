@@ -4,6 +4,7 @@ use chrono::NaiveDate;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{self, from_str, Value};
+use csv::{self, Reader};
 
 use crate::HEBDATE_PATH;
 
@@ -42,22 +43,16 @@ pub fn exclude_holidays_from_file(
     file: &str,
 ) -> Result<Vec<HebDate>, Box<dyn std::error::Error>> {
     let file = std::fs::read_to_string(file)?;
-    let json: Value = from_str(&file)?;
-    let json: &Value = &json
-        .as_object()
-        .expect("Could not find \"Excluded Holidays\"")["Excluded Holidays"];
+    let mut rdr = Reader::from_reader(file.as_bytes());
+    let iter = rdr
+        .deserialize()
+        .map(|x: Result<ExcludedName, csv::Error>| x.unwrap());
+    
     let mut filtered = dates;
-    for holiday in json
-        .as_array()
-        .expect("Could not find holidays array")
-        .iter()
-    {
-        let title = holiday.as_object().expect("holiday list reading error")["title"]
-            .as_str()
-            .expect("holiday needs to be a string")
-            .to_string();
-        filtered.retain(|f| !f.title.contains(&title));
+    for row in iter {
+        filtered.retain(|f| !f.title.contains(&row.names));
     }
+
     Ok(filtered)
 }
 
@@ -66,7 +61,6 @@ pub struct HebDate {
     pub title: String,
     pub date: NaiveDate,
 }
-
 impl HebDate {
     pub fn from(raw: &HebDateRaw) -> Self {
         Self {
@@ -83,6 +77,7 @@ impl Deref for HebDate {
         &self
     }
 }
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HebDateRaw {
     pub title: String,
@@ -95,6 +90,10 @@ impl HebDateRaw {
             date: format!("{}", heb_date.date.format("%Y-%m-%d")),
         }
     }
+}
+#[derive(Deserialize)]
+struct ExcludedName{
+    pub names:String,
 }
 // #[cfg(test)]
 // mod tests {
