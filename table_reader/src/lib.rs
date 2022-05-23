@@ -4,17 +4,18 @@ pub mod sender;
 use std::{collections::HashMap, io::Write, thread};
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Weekday};
-use reader::{config::*, table::get_soldiers_table};
+use reader::table::get_soldiers_table;
 use sender::send_to;
 use std::sync::mpsc;
 use table_maker::Soldier;
+use table_configs::{config,paths};
 
 const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** ***REMOVED*** ***REMOVED***/ה ***REMOVED*** ***REMOVED*** ***REMOVED***";
 
 pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
-    let config = load_config(reader::CONFIG_PATH)?;
+    let config = config::load_config()?;
     let thread_config = config.clone();
-    let table = get_soldiers_table(&format!("{}output_table.csv", config.output_path))?;
+    let table = get_soldiers_table(&paths::get_output_path(&config.output_file_name))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
     let (tx_status, rx_status) = mpsc::channel();
     let rx_request_clock = tx_request_from_main.clone();
@@ -114,12 +115,12 @@ help                              - Display this text."
 fn action_loop(
     transmitting: mpsc::Sender<Status>,
     receiving: mpsc::Receiver<Request>,
-    config: &ConfigReader,
+    config: &config::Config,
     soldiers_table: HashMap<NaiveDate, Soldier>,
 ) {
     let send_time = config.send_time;
     let reset_time = config.reset_time;
-    let output_path = &config.output_path;
+    let output_path = &format!("{}",paths::get_output_path(&config.output_file_name));
     let maintainer = &config.maintainer;
     let alert_day = config.alert_day;
     let mut soldiers_table = soldiers_table;
@@ -190,7 +191,7 @@ fn drop_name(
     soldiers_table: &mut HashMap<NaiveDate, Soldier>,
     drop_type: DropType,
     date: NaiveDate,
-    config: &ConfigReader,
+    config: &config::Config,
 ) -> HashMap<NaiveDate, Soldier> {
     match drop_type {
         DropType::Clean => _ = soldiers_table.remove(&date),
@@ -224,7 +225,7 @@ fn drop_name(
             //Move modifying functionality to table_maker.
             let mut table = soldiers_table.clone();
             let latest = table.keys().max().unwrap();
-            if let Ok(excluded_dates) = reader::table::get_excluded_dates(&config) {
+            if let Ok(excluded_dates) = reader::table::get_excluded_dates() {
                 let mut dates: Vec<NaiveDate> =
                     table.keys().filter(|d| **d >= date).cloned().collect();
                 //find next date that isn't a weekend and isn't in the excluded days section

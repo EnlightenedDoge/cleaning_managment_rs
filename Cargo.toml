@@ -8,6 +8,7 @@ edition = "***REMOVED***"
 [dependencies]
 table_maker = { path = "./table_maker" }
 table_reader = { path = "./table_reader" }
+table_configs = { path = "./table_configs" }
 chrono = "0.4.19"
 clap = {version = "3.1.9", features=["derive"]}
 
@@ -15,4 +16,5 @@ clap = {version = "3.1.9", features=["derive"]}
 members = [
     "table_maker",
     "table_reader",
+    "table_configs",
 ]
