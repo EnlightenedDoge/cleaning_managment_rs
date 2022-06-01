@@ -1,21 +1,22 @@
-use std::ops::Deref;
+use std::{ops::Deref, str::FromStr};
 
 use chrono::NaiveDate;
 
+use reqwest::{Method, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value};
 use csv::{self, Reader};
 use table_configs::paths;
 
 
-async fn get_heb_cal() -> Result<String, reqwest::Error> {
+fn get_heb_cal() -> Result<String, reqwest::Error> {
     let url = "https://www.hebcal.com/hebcal?v=1&cfg=json&year=now&month=x&maj=on&min=on&mod=on&i=on&geo=none&c=off";
-    let str = reqwest::get(url)?.text()?;
+    let str = reqwest::blocking::get(url)?.text()?;
     Ok(str)
 }
 
 pub fn generate_heb() -> Result<Vec<HebDate>, Box<dyn std::error::Error>> {
-    let heb_cal = futures::executor::block_on(get_heb_cal())?;
+    let heb_cal = get_heb_cal()?;
     std::fs::write(paths::get_hebdate_path(), &heb_cal)?;
 
     Ok(get_struct(&heb_cal)?)

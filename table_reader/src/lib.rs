@@ -23,6 +23,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
     //run the thread responsible for reading data and sending messages
     let _logic_thread =
         thread::spawn(move || action_loop(tx_status, rx_request, &thread_config, table));
+    
     //Run the thread to tick the logic_thread every set period of time
     let _clock_thread = thread::spawn(move || loop {
         thread::sleep(std::time::Duration::from_secs(10));
@@ -293,7 +294,7 @@ fn check_can_send(
 fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, String) {
     match get_soldier_from_table(&soldiers_table, 0) {
         Some(soldier) => {
-            if let Ok(res) = send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE)) {
+            if let Ok(res) = send_to(/*&soldier.phone*/"***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE)) {
                 let num: u32 = res
                     .split_whitespace()
                     .filter(|s| s.parse::<u32>().is_ok())
