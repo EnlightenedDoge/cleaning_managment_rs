@@ -2,7 +2,7 @@ use std::{process::exit, path::Path};
 
 use clap::Parser;
 use table_maker::create_table;
-use table_configs::paths::{init,get_config_path, self};
+use table_configs::paths::{init,get_config_path, self, get_root_dir_path};
 
 #[derive(Parser)]
 #[clap(author, about, long_about = None)]
@@ -25,12 +25,12 @@ fn main() {
                 if !is_init{
                     let path = get_config_path();
                     let path = Path::new(&path).parent().unwrap();
-                    eprint!("Config files missing. Check \"{}\"",path.to_str().unwrap());
-                    exit(1)
+                    println!("Config files missing. Check \"{}\"",path.to_str().unwrap());
+                    exit(0)
                 }
             },
-        Err(e) => {
-            panic!("{:?}",e);
+        Err(_) => {
+            panic!("Failed to create/find specified path \"{:?}\".",get_root_dir_path());
         },
     }
     let cli = Cli::parse();

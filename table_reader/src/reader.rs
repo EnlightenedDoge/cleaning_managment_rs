@@ -10,7 +10,7 @@ pub mod table {
     pub fn get_soldiers_table(
         filepath: &str,
     ) -> Result<HashMap<NaiveDate, Soldier>, Box<dyn std::error::Error>> {
-        let file = std::fs::read_to_string(&filepath)?;
+        let file = std::fs::read_to_string(&filepath).expect("NO TABLE WAS FOUND OR CREATED.");
         let mut map = HashMap::<NaiveDate, Soldier>::new();
 
         let mut rdr = Reader::from_reader(file.as_bytes());

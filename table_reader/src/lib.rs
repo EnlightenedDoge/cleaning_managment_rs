@@ -294,7 +294,7 @@ fn check_can_send(
 fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, String) {
     match get_soldier_from_table(&soldiers_table, 0) {
         Some(soldier) => {
-            if let Ok(res) = send_to(/*&soldier.phone*/"***REMOVED***", &format!("{}: {}", soldier.name, MESSAGE)) {
+            if let Ok(res) = send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE)) {
                 let num: u32 = res
                     .split_whitespace()
                     .filter(|s| s.parse::<u32>().is_ok())

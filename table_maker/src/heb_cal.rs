@@ -1,8 +1,8 @@
-use std::{ops::Deref, str::FromStr};
+use std::ops::Deref;
 
 use chrono::NaiveDate;
 
-use reqwest::{Method, Url};
+use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value};
 use csv::{self, Reader};
@@ -11,7 +11,7 @@ use table_configs::paths;
 
 fn get_heb_cal() -> Result<String, reqwest::Error> {
     let url = "https://www.hebcal.com/hebcal?v=1&cfg=json&year=now&month=x&maj=on&min=on&mod=on&i=on&geo=none&c=off";
-    let str = reqwest::blocking::get(url)?.text()?;
+    let str = reqwest::get(url)?.text()?;
     Ok(str)
 }
 

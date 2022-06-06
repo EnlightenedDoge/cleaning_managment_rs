@@ -2,7 +2,7 @@ use reqwest;
 use serde::Serialize;
 
 pub fn send_to(number: &str, message: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
 
     let body = Body {
         key: "J61G***REMOVED***bp",
@@ -13,7 +13,8 @@ pub fn send_to(number: &str, message: &str) -> Result<String, Box<dyn std::error
         msg: message,
     };
 
-    let res = reqwest::blocking::Client::new()
+    let res = //reqwest::blocking::Client::new()
+    client
         .post("https://api.sms4free.co.il/ApiSMS/SendSMS")
         .json(&body)
         .send()?

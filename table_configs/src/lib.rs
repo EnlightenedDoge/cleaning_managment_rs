@@ -26,80 +26,92 @@ Yom Yerushalayim"#;
 }
 
 pub mod paths{
-    use std::path::Path;
+    use std::{path::Path, io::Write};
+    use platform_dirs::UserDirs;
+
 
     use crate::templates;
-    const ROOT_DIR_WIN:&str = "%LocalAppData%\\cleaning_managment\\";
-    const ROOT_DIR_UNIX:&str = ".config/cleaning_managment/";
-    const EXCLUDED_DATES_PATH_UNIX: &str = ".config/cleaning_managment/config/excluded_hebcal.csv";
-    const EXCLUDED_DATES_PATH_WIN: &str = "%LocalAppData%\\cleaning_managment\\config\\excluded_hebcal.csv";
-    const NAMES_PATH_UNIX: &str = ".config/cleaning_managment/config/names.csv";
-    const NAMES_PATH_WIN: &str = "%LocalAppData%\\cleaning_managment\\config\\names.csv";
-    const HEBDATE_PATH_UNIX: &str = ".config/cleaning_managment/config/heb_date.json";
-    const HEBDATE_PATH_WIN: &str = "%LocalAppData%\\cleaning_managment\\config\\heb_date.json";
-    const CONFIG_PATH_UNIX: &str = ".config/cleaning_managment/config/config.json";
-    const CONFIG_PATH_WIN: &str = "%LocalAppData%\\cleaning_managment\\config\\config.json";
-    const OUTPUT_DIR_PATH_UNIX: &str = ".config/cleaning_managment/output/";
-    const OUTPUT_DIR_PATH_WIN: &str = "%LocalAppData%\\cleaning_managment\\output\\";
-
-    pub fn get_root_dir_path()->String{
+    const EXCLUDED_DATES_PATH_UNIX: &str = "config/excluded_hebcal.csv";
+    const EXCLUDED_DATES_PATH_WIN: &str = "config\\excluded_hebcal.csv";
+    const NAMES_PATH_UNIX: &str = "config/names.csv";
+    const NAMES_PATH_WIN: &str = "config\\names.csv";
+    const HEBDATE_PATH_UNIX: &str = "config/heb_date.json";
+    const HEBDATE_PATH_WIN: &str = "config\\heb_date.json";
+    const CONFIG_PATH_UNIX: &str = "config/config.json";
+    const CONFIG_PATH_WIN: &str = "config\\config.json";
+    const OUTPUT_DIR_PATH_UNIX: &str ="output/";
+    const OUTPUT_DIR_PATH_WIN: &str = "output\\";
+    
+    fn get_app_dir()->String{
+        let path = UserDirs::new().unwrap();
         if cfg!(windows) {
-            ROOT_DIR_WIN.to_string()
-        } else if cfg!(unix) {
-            format!("{}/{}",home::home_dir().unwrap().to_str().unwrap(),ROOT_DIR_UNIX)
+            format!("{}\\{}\\",path.document_dir.display(),"cleaning_managment")
+        }
+        else if cfg!(unix){
+            format!("{}/{}/",path.document_dir.display(),"cleaning_managment")
         }
         else{
-        panic!()
+            panic!()
         }
     }
+
+    pub fn get_root_dir_path()->String{
+        get_app_dir()
+    }
     pub fn get_excluded_holidays_path()->String{
+        
         if cfg!(windows) {
-            EXCLUDED_DATES_PATH_WIN.to_string()
-        } else if cfg!(unix) {
-            format!("{}/{}",home::home_dir().unwrap().to_str().unwrap(),EXCLUDED_DATES_PATH_UNIX)
+            format!("{}{}",get_app_dir(),EXCLUDED_DATES_PATH_WIN)
+        }
+        else if cfg!(unix){
+            format!("{}{}",get_app_dir(),EXCLUDED_DATES_PATH_UNIX)
         }
         else{
-        panic!()
+            panic!()
         }
     }
     pub fn get_names_path()->String{
         if cfg!(windows) {
-            NAMES_PATH_WIN.to_string()
-        } else if cfg!(unix) {
-            format!("{}/{}",home::home_dir().unwrap().to_str().unwrap(),NAMES_PATH_UNIX)
+            format!("{}{}",get_app_dir(),NAMES_PATH_WIN)
+        }
+        else if cfg!(unix){
+            format!("{}{}",get_app_dir(),NAMES_PATH_UNIX)
         }
         else{
-        panic!()
+            panic!()
         }
     }
     pub fn get_hebdate_path()->String{
         if cfg!(windows) {
-            HEBDATE_PATH_WIN.to_string()
-        } else if cfg!(unix) {
-            format!("{}/{}",home::home_dir().unwrap().to_str().unwrap(),HEBDATE_PATH_UNIX)
+            format!("{}{}",get_app_dir(),HEBDATE_PATH_WIN)
+        }
+        else if cfg!(unix){
+            format!("{}{}",get_app_dir(),HEBDATE_PATH_UNIX)
         }
         else{
-        panic!()
+            panic!()
         }
     }
     pub fn get_config_path()->String{
         if cfg!(windows) {
-            CONFIG_PATH_WIN.to_string()
-        } else if cfg!(unix) {
-            format!("{}/{}",home::home_dir().unwrap().to_str().unwrap(),CONFIG_PATH_UNIX)
+            format!("{}{}",get_app_dir(),CONFIG_PATH_WIN)
+        }
+        else if cfg!(unix){
+            format!("{}{}",get_app_dir(),CONFIG_PATH_UNIX)
         }
         else{
-        panic!()
+            panic!()
         }
     }
     pub fn get_output_path(filename:&str)->String{
         if cfg!(windows) {
-            format!("{}{}",OUTPUT_DIR_PATH_WIN,filename)
-        } else if cfg!(unix) {
-            format!("{}/{}{}",home::home_dir().unwrap().to_str().unwrap(),OUTPUT_DIR_PATH_UNIX,filename)
+            format!("{}{}{}",get_app_dir(),OUTPUT_DIR_PATH_WIN,filename)
+        }
+        else if cfg!(unix){
+            format!("{}{}{}",get_app_dir(),OUTPUT_DIR_PATH_UNIX,filename)
         }
         else{
-        panic!()
+            panic!()
         }
     }
     pub fn init()->Result<bool,Box<dyn std::error::Error>>{
@@ -117,6 +129,8 @@ pub mod paths{
             let parent = path.parent().unwrap();
             std::fs::create_dir_all(parent)?;
             std::fs::write(path, default_text)?;
+            println!("Create template in: {}",path.to_str().unwrap());
+            std::io::stdout().flush()?;
             return Ok(false);
         }
         Ok(true)
