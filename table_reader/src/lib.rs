@@ -1,19 +1,30 @@
 pub mod reader;
 pub mod sender;
 
-use std::{collections::HashMap, io::Write, thread};
+use std::{collections::HashMap, io::Write, process::exit, thread};
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Weekday};
+use colored::Colorize;
 use reader::table::get_soldiers_table;
 use sender::send_to;
 use std::sync::mpsc;
+use table_configs::{config, paths};
 use table_maker::Soldier;
-use table_configs::{config,paths};
 
 const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** ***REMOVED*** ***REMOVED***/ה ***REMOVED*** ***REMOVED*** ***REMOVED***";
 
 pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
-    let config = config::load_config()?;
+    let config = config::load_config();
+
+    if !std::path::Path::new(&table_configs::paths::get_output_path(
+        &config.output_file_name,
+    ))
+    .exists()
+    {
+        println!("Table was not created. Type --help to see how to create one.");
+        exit(0);
+    }
+
     let thread_config = config.clone();
     let table = get_soldiers_table(&paths::get_output_path(&config.output_file_name))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
@@ -23,7 +34,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
     //run the thread responsible for reading data and sending messages
     let _logic_thread =
         thread::spawn(move || action_loop(tx_status, rx_request, &thread_config, table));
-    
+
     //Run the thread to tick the logic_thread every set period of time
     let _clock_thread = thread::spawn(move || loop {
         thread::sleep(std::time::Duration::from_secs(10));
@@ -84,29 +95,40 @@ reset time: {}",
                 params.next();
                 let action = params.next().unwrap();
                 let date = params.next().unwrap();
-                if let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d"){
-
-                
-                match action{
-                   "postpone"=>tx_request_from_main.send(Request::Drop(DropType::Postpone, date))?,
-                   "collapse"=>tx_request_from_main.send(Request::Drop(DropType::Collapse, date))?,
-                   "clean"=>tx_request_from_main.send(Request::Drop(DropType::Clean, date))?,
-                   _=>println!("Second parameter must be \"postpone\", \"collapse\" or \"clean\". ") 
+                if let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") {
+                    match action {
+                        "postpone" => {
+                            tx_request_from_main.send(Request::Drop(DropType::Postpone, date))?
+                        }
+                        "collapse" => {
+                            tx_request_from_main.send(Request::Drop(DropType::Collapse, date))?
+                        }
+                        "clean" => {
+                            tx_request_from_main.send(Request::Drop(DropType::Clean, date))?
+                        }
+                        _ => println!(
+                            "Second parameter must be \"postpone\", \"collapse\" or \"clean\". "
+                        ),
+                    }
+                } else {
+                    println!("Date format must be YYYY-MM-DD");
                 }
-            }else{
-                println!("Date format must be YYYY-MM-DD");
-            }
-            }
-            else{
+            } else {
                 println!("Incorrect number of parameters");
             }
         } else if input.contains("help") {
             println!(
                 "Options:
-status                            - Prints current status.
-switch YYYY-mm-dd YYYY-mm-dd      - Switch between two given dates and update the original table.
-resend                            - Send the message again disregarding built-in limitation.
-help                              - Display this text."
+status                                      - Prints current status.
+switch YYYY-mm-dd YYYY-mm-dd                - Switch between two given dates and update the original table.
+drop [clean|collapse|postpone] YYYY-mm-dd   - Remove a date. 
+                                                Clean    - Simply remove the date.
+                                                Collapse - Replace given date's name with the next date's one. 
+                                                           repeat for every following date.
+                                                Postpone - Move given date's name one day forward and repeat
+                                                           for every following name.
+resend                                      - Send the message again disregarding built-in limitation.
+help                                        - Display this text."
             )
         }
         input.clear();
@@ -121,7 +143,7 @@ fn action_loop(
 ) {
     let send_time = config.send_time;
     let reset_time = config.reset_time;
-    let output_path = &format!("{}",paths::get_output_path(&config.output_file_name));
+    let output_path = &format!("{}", paths::get_output_path(&config.output_file_name));
     let maintainer = &config.maintainer;
     let alert_day = config.alert_day;
     let mut soldiers_table = soldiers_table;
@@ -168,6 +190,7 @@ fn action_loop(
                         soldiers_table.insert(date2, sol);
                         reader::table::update_soldiers_table(&output_path, &soldiers_table)
                             .unwrap();
+                        print_around_date(&soldiers_table, 5, &vec![date1, date2]);
                     } else {
                         println!("Dates provided don't exist in table");
                     }
@@ -180,7 +203,9 @@ fn action_loop(
                 Request::Drop(drop_type, date) => {
                     if soldiers_table.contains_key(&date) {
                         drop_name(&mut soldiers_table, drop_type, date, config);
-                        reader::table::update_soldiers_table(&output_path, &soldiers_table).unwrap();
+                        reader::table::update_soldiers_table(&output_path, &soldiers_table)
+                            .unwrap();
+                        print_around_date(&soldiers_table, 5, &vec![date]);
                     }
                 }
             }
@@ -337,6 +362,69 @@ fn is_close_to_time(time: &NaiveTime) -> bool {
         .num_minutes()
         .abs()
         <= 1
+}
+
+fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &Vec<NaiveDate>) {
+    if dates.is_empty() || table.is_empty() {
+        return;
+    }
+    let mut table_dates: Vec<NaiveDate> = table.keys().map(|x| x.clone()).collect();
+    table_dates.sort();
+    let mut dates_to_print = vec![];
+    for date in dates {
+        let index;
+        let found_index = table_dates.iter().position(|x| *x == *date);
+        //If date exists in the keys list unwarp and assign its index.
+        if found_index.is_some() {
+            index = found_index.unwrap();
+        } else {
+            //Otherwise find the closest date's index to it.
+            if let Some(pos) = table_dates
+                .iter()
+                .position(|x| x == table_dates.iter().filter(|x| *x < date).last().unwrap())
+            {
+                index = pos;
+            } else {
+                index = table_dates
+                    .iter()
+                    .position(|x| x == table_dates.iter().filter(|x| *x > date).last().unwrap())
+                    .unwrap();
+            }
+        };
+
+        let start_index = index.checked_sub(range).get_or_insert(0).clone();
+        let end_index = index + range;
+        let end_index = if end_index > table_dates.len() {
+            table_dates.len() - 1
+        } else {
+            end_index
+        };
+
+        for date in &table_dates[start_index..end_index] {
+            dates_to_print.push(date);
+        }
+    }
+    dedup(&mut dates_to_print);
+    for date in dates_to_print {
+        if dates.contains(date) {
+            println!(
+                "{}",
+                format!("{} | {}", date, table.get(date).unwrap().name)
+                    .red()
+                    .bold()
+            );
+        } else {
+            println!("{} | {}", date, table.get(date).unwrap().name);
+        }
+    }
+}
+
+fn dedup<T>(v: &mut Vec<T>)
+where
+    T: Eq + std::hash::Hash + Copy,
+{
+    let mut uniques = std::collections::HashSet::new();
+    v.retain(|e| uniques.insert(*e));
 }
 
 enum Request {

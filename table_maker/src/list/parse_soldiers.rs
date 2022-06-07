@@ -7,8 +7,8 @@ pub struct Soldier {
     pub phone: String,
 }
 
-pub fn parse_candidates_from_file(file: &str) -> Result<Vec<Soldier>, Box<dyn std::error::Error>> {
-    let data = std::fs::read_to_string(file)?;
+pub fn parse_candidates_from_file(file: &str) -> Vec<Soldier> {
+    let data = std::fs::read_to_string(file).expect("Could not read candidates file.");
     let mut people = Vec::new();
     let mut rdr = Reader::from_reader(data.as_bytes());
     let iter = rdr
@@ -17,7 +17,7 @@ pub fn parse_candidates_from_file(file: &str) -> Result<Vec<Soldier>, Box<dyn st
     for row in iter {
         people.push(row);
     }
-    Ok(people)
+    people
 }
 
 #[cfg(test)]

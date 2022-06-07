@@ -2,12 +2,11 @@ use std::ops::Deref;
 
 use chrono::NaiveDate;
 
+use csv::{self, Reader};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value};
-use csv::{self, Reader};
 use table_configs::paths;
-
 
 fn get_heb_cal() -> Result<String, reqwest::Error> {
     let url = "https://www.hebcal.com/hebcal?v=1&cfg=json&year=now&month=x&maj=on&min=on&mod=on&i=on&geo=none&c=off";
@@ -16,7 +15,7 @@ fn get_heb_cal() -> Result<String, reqwest::Error> {
 }
 
 pub fn generate_heb() -> Result<Vec<HebDate>, Box<dyn std::error::Error>> {
-    let heb_cal = get_heb_cal()?;
+    let heb_cal = get_heb_cal().expect("Could not get Hebrew Holidays from hebcal.com");
     std::fs::write(paths::get_hebdate_path(), &heb_cal)?;
 
     Ok(get_struct(&heb_cal)?)
@@ -48,7 +47,7 @@ pub fn exclude_holidays_from_file(
     let iter = rdr
         .deserialize()
         .map(|x: Result<ExcludedName, csv::Error>| x.unwrap());
-    
+
     let mut filtered = dates;
     for row in iter {
         filtered.retain(|f| !f.title.contains(&row.names));
@@ -93,8 +92,8 @@ impl HebDateRaw {
     }
 }
 #[derive(Deserialize)]
-struct ExcludedName{
-    pub names:String,
+struct ExcludedName {
+    pub names: String,
 }
 // #[cfg(test)]
 // mod tests {

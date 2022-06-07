@@ -14,5 +14,8 @@ chrono = "0.4.19"
 csv = "1.1.6"
 table_maker = { path = "../table_maker"}
 table_configs = { path = "../table_configs" }
+colored = "2.0.0"
+
+
 [target.'cfg(unix)'.dependencies]
 openssl = { version = "0.10", features = ["vendored"] }

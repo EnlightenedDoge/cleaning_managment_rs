@@ -3,9 +3,8 @@ pub mod table {
 
     use chrono::NaiveDate;
     use csv::{self, Reader, Writer};
-    use table_maker::{HebDateRaw, NamesTableRaw, Soldier};
     use table_configs::paths;
-
+    use table_maker::{HebDateRaw, NamesTableRaw, Soldier};
 
     pub fn get_soldiers_table(
         filepath: &str,
@@ -54,8 +53,7 @@ pub mod table {
         std::fs::write(filepath, data)?;
         Ok(())
     }
-    pub fn get_excluded_dates(
-    ) -> Result<Vec<table_maker::HebDate>, Box<dyn std::error::Error>> {
+    pub fn get_excluded_dates() -> Result<Vec<table_maker::HebDate>, Box<dyn std::error::Error>> {
         let file = std::fs::read_to_string(&paths::get_output_path("excluded_dates.csv"))?;
         let mut rdr = Reader::from_reader(file.as_bytes());
         let iter = rdr
