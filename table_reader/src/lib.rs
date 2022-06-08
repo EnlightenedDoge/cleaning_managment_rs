@@ -68,7 +68,7 @@ reset time: {}",
                 config.send_time,
                 config.send_time > config.reset_time
             )
-        }else if input.contains("show"){
+        } else if input.contains("show") {
             tx_request_from_main.send(Request::Show)?;
         } else if input.contains("switch") {
             let count = input.split_whitespace().count();
@@ -214,23 +214,31 @@ fn action_loop(
                 Request::Show => {
                     println!("");
                     let mut now = chrono::Local::now().naive_local().date();
-                    if now.weekday()!=Weekday::Sun{
+                    if now.weekday() != Weekday::Sun {
                         let prev = now.checked_sub_signed(chrono::Duration::days(6)).unwrap();
-                        let prev_sun = prev.iter_days().filter(|d|d.weekday()==Weekday::Sun).next().unwrap();
+                        let prev_sun = prev
+                            .iter_days()
+                            .filter(|d| d.weekday() == Weekday::Sun)
+                            .next()
+                            .unwrap();
                         now = prev_sun;
                     }
                     let weeks = now.iter_weeks().take(2);
-                    for week in weeks{
-                        week.iter_days().take(7).for_each(|day|{
-                            if soldiers_table.contains_key(&day){
-                                println!("{} {} | {}",day.weekday().to_string(),day,soldiers_table.get(&day).unwrap().name);
+                    for week in weeks {
+                        week.iter_days().take(7).for_each(|day| {
+                            if soldiers_table.contains_key(&day) {
+                                println!(
+                                    "{} {} | {}",
+                                    day.weekday().to_string(),
+                                    day,
+                                    soldiers_table.get(&day).unwrap().name
+                                );
                             }
                         });
                         println!("---------------------");
                     }
                     print!("> ");
                     std::io::stdout().flush().unwrap();
-
                 }
             }
         }
@@ -444,7 +452,6 @@ fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &
     }
     print!("> ");
     std::io::stdout().flush().unwrap();
-
 }
 
 fn dedup<T>(v: &mut Vec<T>)
