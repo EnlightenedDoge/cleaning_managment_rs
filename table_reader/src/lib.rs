@@ -43,7 +43,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
 
     //main thread
     '_user_interface: loop {
-        print!(">");
+        print!("> ");
         std::io::stdout().flush()?;
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).unwrap();
@@ -68,6 +68,8 @@ reset time: {}",
                 config.send_time,
                 config.send_time > config.reset_time
             )
+        }else if input.contains("show"){
+            tx_request_from_main.send(Request::Show)?;
         } else if input.contains("switch") {
             let count = input.split_whitespace().count();
             let mut params = input.split_whitespace();
@@ -120,6 +122,7 @@ reset time: {}",
             println!(
                 "Options:
 status                                      - Prints current status.
+show                                        - Show current and next week.
 switch YYYY-mm-dd YYYY-mm-dd                - Switch between two given dates and update the original table.
 drop [clean|collapse|postpone] YYYY-mm-dd   - Remove a date. 
                                                 Clean    - Simply remove the date.
@@ -207,6 +210,27 @@ fn action_loop(
                             .unwrap();
                         print_around_date(&soldiers_table, 5, &vec![date]);
                     }
+                }
+                Request::Show => {
+                    println!("");
+                    let mut now = chrono::Local::now().naive_local().date();
+                    if now.weekday()!=Weekday::Sun{
+                        let prev = now.checked_sub_signed(chrono::Duration::days(6)).unwrap();
+                        let prev_sun = prev.iter_days().filter(|d|d.weekday()==Weekday::Sun).next().unwrap();
+                        now = prev_sun;
+                    }
+                    let weeks = now.iter_weeks().take(2);
+                    for week in weeks{
+                        week.iter_days().take(7).for_each(|day|{
+                            if soldiers_table.contains_key(&day){
+                                println!("{} {} | {}",day.weekday().to_string(),day,soldiers_table.get(&day).unwrap().name);
+                            }
+                        });
+                        println!("---------------------");
+                    }
+                    print!("> ");
+                    std::io::stdout().flush().unwrap();
+
                 }
             }
         }
@@ -368,6 +392,7 @@ fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &
     if dates.is_empty() || table.is_empty() {
         return;
     }
+    print!("");
     let mut table_dates: Vec<NaiveDate> = table.keys().map(|x| x.clone()).collect();
     table_dates.sort();
     let mut dates_to_print = vec![];
@@ -417,6 +442,9 @@ fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &
             println!("{} | {}", date, table.get(date).unwrap().name);
         }
     }
+    print!("> ");
+    std::io::stdout().flush().unwrap();
+
 }
 
 fn dedup<T>(v: &mut Vec<T>)
@@ -433,6 +461,7 @@ enum Request {
     Switch(NaiveDate, NaiveDate),
     Resend,
     Drop(DropType, NaiveDate),
+    Show,
 }
 
 struct Status {
