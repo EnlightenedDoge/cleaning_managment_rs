@@ -2,11 +2,12 @@ mod templates {
     pub const CONFIG_TEMPLATE: &str = r#"{
         "start_date": "YYYY-MM-DD",
         "range": uint,
-        "output_path":"",
+        "output_file_name":"name",
         "send_time":"HH:MM:SS",
         "reset_time":"HH:MM:SS",
         "maintainer":"phone_number",
-        "alert_day":[x,y,z]//1=Sunday 7=Saturday[6,7]=Friday and Saturday
+        "alert_day":5, //1=Sunday 7=Saturday
+        "weekend":[x,y,z]//1=Sunday 7=Saturday[6,7]=Friday and Saturday
     }"#;
 
     pub const NAMES_TEMPLATE: &str = r#"name,phone
@@ -155,7 +156,7 @@ pub mod config {
         pub send_time: String,
         pub reset_time: String,
         pub maintainer: String,
-        pub alert_day: String,
+        pub alert_day: usize,
         pub weekend: Vec<usize>,
     }
 
@@ -179,7 +180,7 @@ pub mod config {
                 send_time: NaiveTime::parse_from_str(&config.send_time, "%H:%M:%S").unwrap(),
                 reset_time: NaiveTime::parse_from_str(&config.reset_time, "%H:%M:%S").unwrap(),
                 maintainer: config.maintainer,
-                alert_day: int_to_weekday(config.alert_day.parse().unwrap()),
+                alert_day: int_to_weekday(config.alert_day),
                 weekend: config.weekend.iter().map(|x| int_to_weekday(*x)).collect(),
             }
         }
