@@ -69,7 +69,17 @@ reset time: {}",
                 config.send_time > config.reset_time
             )
         } else if input.contains("show") {
-            tx_request_from_main.send(Request::Show)?;
+            let params:Vec<&str> = input.split_whitespace().collect();
+            if params.len()>=2{
+                if let Ok(val) = params[1].parse::<usize>(){
+                    tx_request_from_main.send(Request::Show(val+1))?;
+                } else{
+                    println!("Error: Could not parse NUMBER in `show NUMBER`. NUMBER must be a positive integer.");
+                }
+            }
+            else{
+                tx_request_from_main.send(Request::Show(2))?;
+            }
         } else if input.contains("switch") {
             let count = input.split_whitespace().count();
             let mut params = input.split_whitespace();
@@ -122,7 +132,7 @@ reset time: {}",
             println!(
                 "Options:
 status                                      - Prints current status.
-show                                        - Show current and next week.
+show NUMBER                                 - Show current and NUMBER of following weeks.
 switch YYYY-mm-dd YYYY-mm-dd                - Switch between two given dates and update the original table.
 drop [clean|collapse|postpone] YYYY-mm-dd   - Remove a date. 
                                                 Clean    - Simply remove the date.
@@ -211,7 +221,7 @@ fn action_loop(
                         print_around_date(&soldiers_table, 5, &vec![date]);
                     }
                 }
-                Request::Show => {
+                Request::Show(num_of_weeks) => {
                     println!("");
                     let mut now = chrono::Local::now().naive_local().date();
                     if now.weekday() != Weekday::Sun {
@@ -223,7 +233,7 @@ fn action_loop(
                             .unwrap();
                         now = prev_sun;
                     }
-                    let weeks = now.iter_weeks().take(2);
+                    let weeks = now.iter_weeks().take(num_of_weeks);
                     for week in weeks {
                         week.iter_days().take(7).for_each(|day| {
                             if soldiers_table.contains_key(&day) {
@@ -468,7 +478,7 @@ enum Request {
     Switch(NaiveDate, NaiveDate),
     Resend,
     Drop(DropType, NaiveDate),
-    Show,
+    Show(usize),
 }
 
 struct Status {
