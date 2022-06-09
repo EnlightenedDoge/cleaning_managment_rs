@@ -1,7 +1,8 @@
 pub mod reader;
 pub mod sender;
+pub mod cli;
 
-use std::{collections::HashMap, io::Write, process::exit, thread};
+use std::{collections::HashMap, io::Write, process::exit, thread, fmt::Display};
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Weekday};
 use colored::Colorize;
@@ -40,116 +41,120 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
         thread::sleep(std::time::Duration::from_secs(10));
         rx_request_clock.send(Request::Refresh).unwrap();
     });
-
+    let _main_thread = thread::spawn(move ||{
+        cli::start(tx_request_from_main, rx_status).unwrap();
+    });
+    _main_thread.join().unwrap();
+Ok(())
     //main thread
-    '_user_interface: loop {
-        print!("> ");
-        std::io::stdout().flush()?;
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
+//     '_user_interface: loop {
+//         print!("> ");
+//         std::io::stdout().flush()?;
+//         let mut input = String::new();
+//         std::io::stdin().read_line(&mut input).unwrap();
 
-        if input.contains("status") {
-            tx_request_from_main.send(Request::Status)?;
-            println!("fetching data:");
-            let status = rx_status.recv()?;
-            println!(
-                "sent_today: {}
-sent status: {}
-today's soldier: {:?}
-tomorrow's soldier: {:?}
-now: {},
-send time: {}
-reset time: {}",
-                status.sent_today,
-                status.status,
-                status.todays_soldier,
-                status.tomorrows_soldier,
-                chrono::Local::now(),
-                config.send_time,
-                config.send_time > config.reset_time
-            )
-        } else if input.contains("show") {
-            let params:Vec<&str> = input.split_whitespace().collect();
-            if params.len()>=2{
-                if let Ok(val) = params[1].parse::<usize>(){
-                    tx_request_from_main.send(Request::Show(val+1))?;
-                } else{
-                    println!("Error: Could not parse NUMBER in `show NUMBER`. NUMBER must be a positive integer.");
-                }
-            }
-            else{
-                tx_request_from_main.send(Request::Show(2))?;
-            }
-        } else if input.contains("switch") {
-            let count = input.split_whitespace().count();
-            let mut params = input.split_whitespace();
-            if count != 3 {
-                println!("Incorrect number of parameters");
-            } else {
-                params.next();
-                if let Ok(date1) = NaiveDate::parse_from_str(params.next().unwrap(), "%Y-%m-%d") {
-                    if let Ok(date2) = NaiveDate::parse_from_str(params.next().unwrap(), "%Y-%m-%d")
-                    {
-                        tx_request_from_main.send(Request::Switch(date1, date2))?;
-                    } else {
-                        println!("Second date could not be parsed. Expecting YYYY-mm-dd");
-                    }
-                } else {
-                    println!("First date could not be parsed. Expecting YYYY-mm-dd");
-                }
-            }
-        } else if input.contains("resend") {
-            tx_request_from_main.send(Request::Resend)?;
-        } else if input.contains("drop") {
-            let count = input.split_whitespace().count();
-            let mut params = input.split_whitespace();
-            if count == 3 {
-                params.next();
-                let action = params.next().unwrap();
-                let date = params.next().unwrap();
-                if let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") {
-                    match action {
-                        "postpone" => {
-                            tx_request_from_main.send(Request::Drop(DropType::Postpone, date))?
-                        }
-                        "collapse" => {
-                            tx_request_from_main.send(Request::Drop(DropType::Collapse, date))?
-                        }
-                        "clean" => {
-                            tx_request_from_main.send(Request::Drop(DropType::Clean, date))?
-                        }
-                        _ => println!(
-                            "Second parameter must be \"postpone\", \"collapse\" or \"clean\". "
-                        ),
-                    }
-                } else {
-                    println!("Date format must be YYYY-MM-DD");
-                }
-            } else {
-                println!("Incorrect number of parameters");
-            }
-        } else if input.contains("help") {
-            println!(
-                "Options:
-status                                      - Prints current status.
-show NUMBER                                 - Show current and NUMBER of following weeks.
-switch YYYY-mm-dd YYYY-mm-dd                - Switch between two given dates and update the original table.
-drop [clean|collapse|postpone] YYYY-mm-dd   - Remove a date. 
-                                                Clean    - Simply remove the date.
-                                                Collapse - Replace given date's name with the next date's one. 
-                                                           repeat for every following date.
-                                                Postpone - Move given date's name one day forward and repeat
-                                                           for every following name.
-resend                                      - Send the message again disregarding built-in limitation.
-help                                        - Display this text."
-            )
-        }
-        input.clear();
-    }
+//         if input.contains("status") {
+//             tx_request_from_main.send(Request::Status)?;
+//             println!("fetching data:");
+//             let status = rx_status.recv()?;
+//             println!(
+//                 "sent_today: {}
+// sent status: {}
+// today's soldier: {:?}
+// tomorrow's soldier: {:?}
+// now: {},
+// send time: {}
+// reset time: {}",
+//                 status.sent_today,
+//                 status.status,
+//                 status.todays_soldier,
+//                 status.tomorrows_soldier,
+//                 chrono::Local::now(),
+//                 config.send_time,
+//                 config.send_time > config.reset_time
+//             )
+//         } else if input.contains("show") {
+//             let params:Vec<&str> = input.split_whitespace().collect();
+//             if params.len()>=2{
+//                 if let Ok(val) = params[1].parse::<usize>(){
+//                     tx_request_from_main.send(Request::Show(val+1))?;
+//                 } else{
+//                     println!("Error: Could not parse NUMBER in `show NUMBER`. NUMBER must be a positive integer.");
+//                 }
+//             }
+//             else{
+//                 tx_request_from_main.send(Request::Show(2))?;
+//             }
+//         } else if input.contains("switch") {
+//             let count = input.split_whitespace().count();
+//             let mut params = input.split_whitespace();
+//             if count != 3 {
+//                 println!("Incorrect number of parameters");
+//             } else {
+//                 params.next();
+//                 if let Ok(date1) = NaiveDate::parse_from_str(params.next().unwrap(), "%Y-%m-%d") {
+//                     if let Ok(date2) = NaiveDate::parse_from_str(params.next().unwrap(), "%Y-%m-%d")
+//                     {
+//                         tx_request_from_main.send(Request::Switch(date1, date2))?;
+//                     } else {
+//                         println!("Second date could not be parsed. Expecting YYYY-mm-dd");
+//                     }
+//                 } else {
+//                     println!("First date could not be parsed. Expecting YYYY-mm-dd");
+//                 }
+//             }
+//         } else if input.contains("resend") {
+//             tx_request_from_main.send(Request::Resend)?;
+//         } else if input.contains("drop") {
+//             let count = input.split_whitespace().count();
+//             let mut params = input.split_whitespace();
+//             if count == 3 {
+//                 params.next();
+//                 let action = params.next().unwrap();
+//                 let date = params.next().unwrap();
+//                 if let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") {
+//                     match action {
+//                         "postpone" => {
+//                             tx_request_from_main.send(Request::Drop(DropType::Postpone, date))?
+//                         }
+//                         "collapse" => {
+//                             tx_request_from_main.send(Request::Drop(DropType::Collapse, date))?
+//                         }
+//                         "clean" => {
+//                             tx_request_from_main.send(Request::Drop(DropType::Clean, date))?
+//                         }
+//                         _ => println!(
+//                             "Second parameter must be \"postpone\", \"collapse\" or \"clean\". "
+//                         ),
+//                     }
+//                 } else {
+//                     println!("Date format must be YYYY-MM-DD");
+//                 }
+//             } else {
+//                 println!("Incorrect number of parameters");
+//             }
+//         } else if input.contains("help") {
+//             println!(
+//                 "Options:
+// status                                      - Prints current status.
+// show NUMBER                                 - Show current and NUMBER of following weeks.
+// switch YYYY-mm-dd YYYY-mm-dd                - Switch between two given dates and update the original table.
+// drop [clean|collapse|postpone] YYYY-mm-dd   - Remove a date. 
+//                                                 Clean    - Simply remove the date.
+//                                                 Collapse - Replace given date's name with the next date's one. 
+//                                                            repeat for every following date.
+//                                                 Postpone - Move given date's name one day forward and repeat
+//                                                            for every following name.
+// resend                                      - Send the message again disregarding built-in limitation.
+// help                                        - Display this text."
+//             )
+//         }
+//         input.clear();
+//     }
 }
 
 fn action_loop(
-    transmitting: mpsc::Sender<Status>,
+    transmitting: mpsc::Sender<Vec<Box<dyn Display + Send>>>,
     receiving: mpsc::Receiver<Request>,
     config: &config::Config,
     soldiers_table: HashMap<NaiveDate, Soldier>,
@@ -167,17 +172,31 @@ fn action_loop(
     //Wait for thread to send a request
     loop {
         if let Ok(req) = receiving.recv() {
-            match req {
+            let output:Vec<Box<dyn Display + Send>> = match req {
                 //Send back formatted status of current and next
                 Request::Status => {
-                    transmitting
-                        .send(Status {
+                    let status =
+                    Status {
                             sent_today: is_sent,
                             status: status.to_string(),
                             todays_soldier: get_soldier_from_table(&soldiers_table, 0),
                             tomorrows_soldier: get_soldier_from_table(&soldiers_table, 1),
-                        })
-                        .unwrap();
+                        };
+                        vec![Box::new(format!("sent_today: {}
+                        sent status: {}
+                        today's soldier: {:?}
+                        tomorrow's soldier: {:?}
+                        now: {},
+                        send time: {}
+                        reset time: {}",
+                                        status.sent_today,
+                                        status.status,
+                                        status.todays_soldier,
+                                        status.tomorrows_soldier,
+                                        chrono::Local::now(),
+                                        config.send_time,
+                                        config.send_time > config.reset_time))]
+                            
                 }
 
                 //basic functionality. Send to specified on specified time
@@ -193,6 +212,7 @@ fn action_loop(
                         resend,
                     );
                     resend = false;
+                    vec![]
                 }
 
                 //switch names of between two dates
@@ -203,26 +223,29 @@ fn action_loop(
                         soldiers_table.insert(date2, sol);
                         reader::table::update_soldiers_table(&output_path, &soldiers_table)
                             .unwrap();
-                        print_around_date(&soldiers_table, 5, &vec![date1, date2]);
+                        print_around_date(&soldiers_table, 5, &vec![date1, date2])
                     } else {
-                        println!("Dates provided don't exist in table");
+                        vec![Box::new("Dates provided don't exist in table")]
                     }
                 }
 
                 //toggle flag for sending a message again
                 Request::Resend => {
                     resend = true;
+                    vec![]
                 }
                 Request::Drop(drop_type, date) => {
                     if soldiers_table.contains_key(&date) {
                         drop_name(&mut soldiers_table, drop_type, date, config);
                         reader::table::update_soldiers_table(&output_path, &soldiers_table)
                             .unwrap();
-                        print_around_date(&soldiers_table, 5, &vec![date]);
+                        print_around_date(&soldiers_table, 5, &vec![date])
+                    }
+                    else{
+                        vec![]
                     }
                 }
                 Request::Show(num_of_weeks) => {
-                    println!("");
                     let mut now = chrono::Local::now().naive_local().date();
                     if now.weekday() != Weekday::Sun {
                         let prev = now.checked_sub_signed(chrono::Duration::days(6)).unwrap();
@@ -233,24 +256,25 @@ fn action_loop(
                             .unwrap();
                         now = prev_sun;
                     }
+                    let mut output = Vec::<Box<dyn Display+Send>>::new();
                     let weeks = now.iter_weeks().take(num_of_weeks);
                     for week in weeks {
                         week.iter_days().take(7).for_each(|day| {
                             if soldiers_table.contains_key(&day) {
-                                println!(
+                                output.push(Box::new(format!(
                                     "{} {} | {}",
                                     day.weekday().to_string(),
                                     day,
                                     soldiers_table.get(&day).unwrap().name
-                                );
+                                )));
                             }
                         });
-                        println!("---------------------");
+                        output.push(Box::new("---------------------"));
                     }
-                    print!("> ");
-                    std::io::stdout().flush().unwrap();
+                    output
                 }
-            }
+            };
+            transmitting.send(output);
         }
     }
 }
@@ -406,11 +430,10 @@ fn is_close_to_time(time: &NaiveTime) -> bool {
         <= 1
 }
 
-fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &Vec<NaiveDate>) {
+fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &Vec<NaiveDate>) ->Vec<Box<dyn Display+Send>>{
     if dates.is_empty() || table.is_empty() {
-        return;
+        return vec![];
     }
-    print!("");
     let mut table_dates: Vec<NaiveDate> = table.keys().map(|x| x.clone()).collect();
     table_dates.sort();
     let mut dates_to_print = vec![];
@@ -448,20 +471,17 @@ fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &
         }
     }
     dedup(&mut dates_to_print);
+    let mut output = Vec::<Box<dyn std::fmt::Display+Send>>::new();
     for date in dates_to_print {
         if dates.contains(date) {
-            println!(
-                "{}",
-                format!("{} | {}", date, table.get(date).unwrap().name)
+            output.push(Box::new(format!("{} | {}", date, table.get(date).unwrap().name)
                     .red()
-                    .bold()
-            );
+                    .bold()));
         } else {
-            println!("{} | {}", date, table.get(date).unwrap().name);
+            output.push(Box::new(format!("{} | {}", date, table.get(date).unwrap().name)));
         }
     }
-    print!("> ");
-    std::io::stdout().flush().unwrap();
+    output
 }
 
 fn dedup<T>(v: &mut Vec<T>)
@@ -472,7 +492,7 @@ where
     v.retain(|e| uniques.insert(*e));
 }
 
-enum Request {
+pub enum Request {
     Status,
     Refresh,
     Switch(NaiveDate, NaiveDate),
@@ -481,7 +501,7 @@ enum Request {
     Show(usize),
 }
 
-struct Status {
+pub struct Status {
     sent_today: bool,
     status: String,
     todays_soldier: Option<Soldier>,
@@ -489,7 +509,7 @@ struct Status {
 }
 
 #[derive(Debug)]
-enum DropType {
+pub enum DropType {
     Clean,
     Collapse,
     Postpone,
