@@ -35,7 +35,7 @@ pub fn start(tx_request_from_main:Sender<Request>,rx_output:Receiver<Vec<Box<dyn
 fn fetch_status(tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,Box<dyn std::error::Error>>{
     tx_request_from_main.send(Request::Status)?;
             println!("fetching data:");
-            Ok(rx_output.recv().unwrap())
+            Ok(rx_output.recv()?)
 //             println!(
 //                 "sent_today: {}
 // sent status: {}
@@ -55,7 +55,7 @@ fn fetch_status(tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Bo
 //             Ok(())
 }
 
-fn show(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,SendError<Request>>{
+fn show(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,Box<dyn std::error::Error>>{
             if params.len()>0{
                 if let Ok(val) = params.first().unwrap().parse::<usize>(){
                     tx_request_from_main.send(Request::Show(val+1))?;
@@ -66,11 +66,11 @@ fn show(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver
             }
             else{
                 tx_request_from_main.send(Request::Show(2))?;
-                Ok(rx_output.recv().unwrap())
+                Ok(rx_output.recv()?)
             }
 }
 
-fn switch(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,SendError<Request>>{
+fn switch(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,Box<dyn std::error::Error>>{
             if params.len() != 2 {
                 Ok(vec![Box::new("Incorrect number of parameters".to_string())])
             } else {
@@ -78,7 +78,7 @@ fn switch(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiv
                     if let Ok(date2) = NaiveDate::parse_from_str(params[1], "%Y-%m-%d")
                     {
                         tx_request_from_main.send(Request::Switch(date1, date2))?;
-                        Ok(rx_output.recv().unwrap())
+                        Ok(rx_output.recv()?)
                     } else {
                         Ok(vec![Box::new("Second date could not be parsed. Expecting YYYY-mm-dd".to_string())])
                     }
@@ -88,7 +88,7 @@ fn switch(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiv
             }
 }
 
-fn drop(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,SendError<Request>>{
+fn drop(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,Box<dyn std::error::Error>>{
             if params.len() == 2 {
                 let action = params[0];
                 let date = params[1];
@@ -96,15 +96,15 @@ fn drop(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver
                     match action {
                         "postpone" => {
                             tx_request_from_main.send(Request::Drop(DropType::Postpone, date))?;
-                            Ok(rx_output.recv().unwrap())
+                            Ok(rx_output.recv()?)
                         }
                         "collapse" => {
                             tx_request_from_main.send(Request::Drop(DropType::Collapse, date))?;
-                            Ok(rx_output.recv().unwrap())
+                            Ok(rx_output.recv()?)
                         }
                         "clean" => {
                             tx_request_from_main.send(Request::Drop(DropType::Clean, date))?;
-                            Ok(rx_output.recv().unwrap())
+                            Ok(rx_output.recv()?)
                         }
                         _ => Ok(
                             vec![Box::new("Second parameter must be \"postpone\", \"collapse\" or \"clean\". ".to_string())]

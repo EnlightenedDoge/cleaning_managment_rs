@@ -41,10 +41,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
         thread::sleep(std::time::Duration::from_secs(10));
         rx_request_clock.send(Request::Refresh).unwrap();
     });
-    let _main_thread = thread::spawn(move ||{
-        cli::start(tx_request_from_main, rx_status).unwrap();
-    });
-    _main_thread.join().unwrap();
+    cli::start(tx_request_from_main, rx_status).unwrap();
 Ok(())
     //main thread
 //     '_user_interface: loop {
@@ -212,7 +209,7 @@ fn action_loop(
                         resend,
                     );
                     resend = false;
-                    vec![]
+                    continue;
                 }
 
                 //switch names of between two dates
@@ -274,7 +271,7 @@ fn action_loop(
                     output
                 }
             };
-            transmitting.send(output);
+            transmitting.send(output).unwrap();
         }
     }
 }
