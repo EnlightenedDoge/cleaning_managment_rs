@@ -1,8 +1,11 @@
-use std::{sync::mpsc::{Sender, Receiver, SendError}, io::Write, fmt::Display};
+use std::{sync::mpsc::{Sender, Receiver}, io::Write, fmt::Display};
 
 use chrono::NaiveDate;
 
 use crate::{Request, DropType};
+
+
+///Module responsible for the app's CLI
 pub fn start(tx_request_from_main:Sender<Request>,rx_output:Receiver<Vec<Box<dyn Display + Send>>>)->Result<(),Box<dyn std::error::Error>>{
     //main thread
     loop {
@@ -36,23 +39,6 @@ fn fetch_status(tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Bo
     tx_request_from_main.send(Request::Status)?;
             println!("fetching data:");
             Ok(rx_output.recv()?)
-//             println!(
-//                 "sent_today: {}
-// sent status: {}
-// today's soldier: {:?}
-// tomorrow's soldier: {:?}
-// now: {},
-// send time: {}
-// reset time: {}",
-//                 status.sent_today,
-//                 status.status,
-//                 status.todays_soldier,
-//                 status.tomorrows_soldier,
-//                 chrono::Local::now(),
-//                 config.send_time,
-//                 config.send_time > config.reset_time
-//             );
-//             Ok(())
 }
 
 fn show(params:&[&str],tx_request_from_main:&Sender<Request>,rx_output:&Receiver<Vec<Box<dyn Display + Send>>>)->Result<Vec<Box<dyn Display + Send>>,Box<dyn std::error::Error>>{

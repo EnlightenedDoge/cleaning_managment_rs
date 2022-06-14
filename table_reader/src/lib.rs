@@ -1,8 +1,8 @@
-pub mod reader;
-pub mod sender;
-pub mod cli;
+mod reader;
+mod sender;
+mod cli;
 
-use std::{collections::HashMap, io::Write, process::exit, thread, fmt::Display};
+use std::{collections::HashMap, process::exit, thread, fmt::Display};
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Weekday};
 use colored::Colorize;
@@ -41,115 +41,12 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
         thread::sleep(std::time::Duration::from_secs(10));
         rx_request_clock.send(Request::Refresh).unwrap();
     });
+
     cli::start(tx_request_from_main, rx_status).unwrap();
 Ok(())
-    //main thread
-//     '_user_interface: loop {
-//         print!("> ");
-//         std::io::stdout().flush()?;
-//         let mut input = String::new();
-//         std::io::stdin().read_line(&mut input).unwrap();
-
-//         if input.contains("status") {
-//             tx_request_from_main.send(Request::Status)?;
-//             println!("fetching data:");
-//             let status = rx_status.recv()?;
-//             println!(
-//                 "sent_today: {}
-// sent status: {}
-// today's soldier: {:?}
-// tomorrow's soldier: {:?}
-// now: {},
-// send time: {}
-// reset time: {}",
-//                 status.sent_today,
-//                 status.status,
-//                 status.todays_soldier,
-//                 status.tomorrows_soldier,
-//                 chrono::Local::now(),
-//                 config.send_time,
-//                 config.send_time > config.reset_time
-//             )
-//         } else if input.contains("show") {
-//             let params:Vec<&str> = input.split_whitespace().collect();
-//             if params.len()>=2{
-//                 if let Ok(val) = params[1].parse::<usize>(){
-//                     tx_request_from_main.send(Request::Show(val+1))?;
-//                 } else{
-//                     println!("Error: Could not parse NUMBER in `show NUMBER`. NUMBER must be a positive integer.");
-//                 }
-//             }
-//             else{
-//                 tx_request_from_main.send(Request::Show(2))?;
-//             }
-//         } else if input.contains("switch") {
-//             let count = input.split_whitespace().count();
-//             let mut params = input.split_whitespace();
-//             if count != 3 {
-//                 println!("Incorrect number of parameters");
-//             } else {
-//                 params.next();
-//                 if let Ok(date1) = NaiveDate::parse_from_str(params.next().unwrap(), "%Y-%m-%d") {
-//                     if let Ok(date2) = NaiveDate::parse_from_str(params.next().unwrap(), "%Y-%m-%d")
-//                     {
-//                         tx_request_from_main.send(Request::Switch(date1, date2))?;
-//                     } else {
-//                         println!("Second date could not be parsed. Expecting YYYY-mm-dd");
-//                     }
-//                 } else {
-//                     println!("First date could not be parsed. Expecting YYYY-mm-dd");
-//                 }
-//             }
-//         } else if input.contains("resend") {
-//             tx_request_from_main.send(Request::Resend)?;
-//         } else if input.contains("drop") {
-//             let count = input.split_whitespace().count();
-//             let mut params = input.split_whitespace();
-//             if count == 3 {
-//                 params.next();
-//                 let action = params.next().unwrap();
-//                 let date = params.next().unwrap();
-//                 if let Ok(date) = NaiveDate::parse_from_str(date, "%Y-%m-%d") {
-//                     match action {
-//                         "postpone" => {
-//                             tx_request_from_main.send(Request::Drop(DropType::Postpone, date))?
-//                         }
-//                         "collapse" => {
-//                             tx_request_from_main.send(Request::Drop(DropType::Collapse, date))?
-//                         }
-//                         "clean" => {
-//                             tx_request_from_main.send(Request::Drop(DropType::Clean, date))?
-//                         }
-//                         _ => println!(
-//                             "Second parameter must be \"postpone\", \"collapse\" or \"clean\". "
-//                         ),
-//                     }
-//                 } else {
-//                     println!("Date format must be YYYY-MM-DD");
-//                 }
-//             } else {
-//                 println!("Incorrect number of parameters");
-//             }
-//         } else if input.contains("help") {
-//             println!(
-//                 "Options:
-// status                                      - Prints current status.
-// show NUMBER                                 - Show current and NUMBER of following weeks.
-// switch YYYY-mm-dd YYYY-mm-dd                - Switch between two given dates and update the original table.
-// drop [clean|collapse|postpone] YYYY-mm-dd   - Remove a date. 
-//                                                 Clean    - Simply remove the date.
-//                                                 Collapse - Replace given date's name with the next date's one. 
-//                                                            repeat for every following date.
-//                                                 Postpone - Move given date's name one day forward and repeat
-//                                                            for every following name.
-// resend                                      - Send the message again disregarding built-in limitation.
-// help                                        - Display this text."
-//             )
-//         }
-//         input.clear();
-//     }
 }
 
+//Function responsible for executing relevent code depending on the Request enum
 fn action_loop(
     transmitting: mpsc::Sender<Vec<Box<dyn Display + Send>>>,
     receiving: mpsc::Receiver<Request>,
@@ -158,7 +55,7 @@ fn action_loop(
 ) {
     let send_time = config.send_time;
     let reset_time = config.reset_time;
-    let output_path = &format!("{}", paths::get_output_path(&config.output_file_name));
+    let output_path = &paths::get_output_path(&config.output_file_name);
     let maintainer = &config.maintainer;
     let alert_day = config.alert_day;
     let mut soldiers_table = soldiers_table;
@@ -170,7 +67,7 @@ fn action_loop(
     loop {
         if let Ok(req) = receiving.recv() {
             let output:Vec<Box<dyn Display + Send>> = match req {
-                //Send back formatted status of current and next
+                //Send back formatted status of current and next candidate
                 Request::Status => {
                     let status =
                     Status {
@@ -179,13 +76,13 @@ fn action_loop(
                             todays_soldier: get_soldier_from_table(&soldiers_table, 0),
                             tomorrows_soldier: get_soldier_from_table(&soldiers_table, 1),
                         };
-                        vec![Box::new(format!("sent_today: {}
-                        sent status: {}
-                        today's soldier: {:?}
-                        tomorrow's soldier: {:?}
-                        now: {},
-                        send time: {}
-                        reset time: {}",
+                   vec![Box::new(format!("sent_today: {}
+sent status: {}
+today's soldier: {:?}
+tomorrow's soldier: {:?}
+now: {},
+send time: {}
+reset time: {}",
                                         status.sent_today,
                                         status.status,
                                         status.todays_soldier,
@@ -196,7 +93,7 @@ fn action_loop(
                             
                 }
 
-                //basic functionality. Send to specified on specified time
+                //basic functionality. Send to specified name on specified time
                 Request::Refresh => {
                     (is_sent, status) = check_can_send(
                         &soldiers_table,
@@ -231,6 +128,9 @@ fn action_loop(
                     resend = true;
                     vec![]
                 }
+
+                //Drop a name from the table completly, collapse the next names to the current one's date, or postpone by 
+                //moving all names from given date one entry forward
                 Request::Drop(drop_type, date) => {
                     if soldiers_table.contains_key(&date) {
                         drop_name(&mut soldiers_table, drop_type, date, config);
@@ -242,6 +142,8 @@ fn action_loop(
                         vec![]
                     }
                 }
+
+                //Show x+1 weeks from, and including, current week.
                 Request::Show(num_of_weeks) => {
                     let mut now = chrono::Local::now().naive_local().date();
                     if now.weekday() != Weekday::Sun {
@@ -281,7 +183,7 @@ fn drop_name(
     drop_type: DropType,
     date: NaiveDate,
     config: &config::Config,
-) -> HashMap<NaiveDate, Soldier> {
+) {
     match drop_type {
         DropType::Clean => _ = soldiers_table.remove(&date),
         DropType::Collapse => {
@@ -348,9 +250,9 @@ fn drop_name(
             *soldiers_table = table;
         }
     }
-    soldiers_table.clone()
 }
 
+//Check if it is possible to send an SMS message and return status.
 fn check_can_send(
     soldiers_table: &HashMap<NaiveDate, Soldier>,
     send_time: &NaiveTime,
@@ -379,6 +281,7 @@ fn check_can_send(
     (is_sent, status)
 }
 
+//send sms message to number found in table
 fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, String) {
     match get_soldier_from_table(&soldiers_table, 0) {
         Some(soldier) => {
@@ -405,6 +308,7 @@ fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, Strin
     }
 }
 
+//get name-number pair from the table
 fn get_soldier_from_table(
     soldiers_table: &HashMap<NaiveDate, Soldier>,
     add_days: i64,
@@ -427,6 +331,7 @@ fn is_close_to_time(time: &NaiveTime) -> bool {
         <= 1
 }
 
+//print range of entries around given date
 fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &Vec<NaiveDate>) ->Vec<Box<dyn Display+Send>>{
     if dates.is_empty() || table.is_empty() {
         return vec![];
@@ -481,6 +386,7 @@ fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &
     output
 }
 
+//Helper function to deduplicate a collection
 fn dedup<T>(v: &mut Vec<T>)
 where
     T: Eq + std::hash::Hash + Copy,
@@ -489,6 +395,7 @@ where
     v.retain(|e| uniques.insert(*e));
 }
 
+//Types of actions to execute in action_loop
 pub enum Request {
     Status,
     Refresh,
@@ -603,33 +510,18 @@ mod tests {
 
     fn inititate(drop_type: DropType) -> Data {
         let table = "name,number,date
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-12
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-13
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-24
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-25
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-26
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-04-27
-***REMOVED*** ***REMOVED***-***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-01
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-02
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-03
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-04
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-08
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-09
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-10
-***REMOVED***  ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-11
-***REMOVED*** ***REMOVED***-***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-15
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-16
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-17
-***REMOVED*** ***REMOVED***,***REMOVED***-***REMOVED***,***REMOVED***-05-18";
+John,***REMOVED***,***REMOVED***-05-18
+Maddy,***REMOVED***,***REMOVED***-05-17
+Kaladin,***REMOVED***, ***REMOVED***-05-16";
         let table_path = format!("./test_table_{:?}.csv", drop_type);
         std::fs::write(&table_path, table).unwrap();
         let config = r#"{
-    "start_date": "***REMOVED***-04-12",
+    "start_date": "***REMOVED***-05-18",
     "range": ***REMOVED***,
     "output_path":"./output/",
     "send_time":"09:00:00",
     "reset_time":"01:00:00",
-    "maintainer":"***REMOVED***",
+    "maintainer":"",
     "alert_day":"5",
     "weekend":[5,6,7]
     }"#;
@@ -641,7 +533,7 @@ mod tests {
         std::fs::remove_file(&table_path).unwrap();
         std::fs::remove_file(&config_path).unwrap();
         Data {
-            drop_date: NaiveDate::from_ymd(***REMOVED***, 4, 26),
+            drop_date: NaiveDate::from_ymd(***REMOVED***, 5, 18),
             name_table: table,
             config,
         }
