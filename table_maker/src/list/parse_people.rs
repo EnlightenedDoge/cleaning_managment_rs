@@ -26,11 +26,11 @@ mod tests {
     #[test]
     fn parse_people() {
         let s = r#"name,phone
-Joe,***REMOVED***"#;
+Joe,058"#;
         std::fs::write("./test.csv", s).expect("Failed to write to test file");
         let vec = vec![Person {
             name: "Joe".to_string(),
-            phone: "***REMOVED***".to_string(),
+            phone: "058".to_string(),
         }];
         let parsed = parse_candidates_from_file("./test.csv").expect("failed test");
         assert_eq!(vec.len(), parsed.len());

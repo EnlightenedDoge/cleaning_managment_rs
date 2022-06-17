@@ -11,9 +11,9 @@ mod templates {
     }"#;
 
     pub const NAMES_TEMPLATE: &str = r#"name,phone
-John,***REMOVED***
-Maddy,***REMOVED***
-Kaladin,***REMOVED***
+John,9725130465
+Maddy,972541235467
+Kaladin,972468578448
 "#;
 
     pub const EXCLUDED_HOLIDAYS_TEMPLATE: &str = r#"names

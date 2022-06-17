@@ -5,10 +5,10 @@ pub fn send_to(number: &str, message: &str) -> Result<String, Box<dyn std::error
     let client = reqwest::Client::new();
 
     let body = Body {
-        key: "J61G***REMOVED***bp",
-        user: "***REMOVED***",
-        pass: "***REMOVED***",
-        sender: "***REMOVED***",
+        key: "",
+        user: "",
+        pass: "",
+        sender: "",
         recipient: number,
         msg: message,
     };

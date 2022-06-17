@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn dates_list() {
-        let start_date = NaiveDate::from_ymd(***REMOVED***, 1, 1);
+        let start_date = NaiveDate::from_ymd(2000, 1, 1);
         let time_period = 7;
         let res: Vec<NaiveDate> = start_date.iter_days().take(time_period).collect();
         assert!(res.iter().any(|p| p.weekday() == Weekday::Sat));
@@ -87,20 +87,20 @@ mod tests {
         let people = vec![
             Person {
                 name: "amichai".to_string(),
-                phone: "***REMOVED***".to_string(),
+                phone: "00000".to_string(),
             },
             Person {
                 name: "Joe".to_string(),
-                phone: "***REMOVED***".to_string(),
+                phone: "333".to_string(),
             },
         ];
-        let test_date = NaiveDate::from_ymd(***REMOVED***, 3, 1);
+        let test_date = NaiveDate::from_ymd(2000, 3, 1);
         let holidays = vec![HebDate {
             date: test_date,
             title: "purim".to_string(),
         }];
-        let start_date = NaiveDate::from_ymd(***REMOVED***, 1, 1);
-        let time_period = ***REMOVED***;
+        let start_date = NaiveDate::from_ymd(2000, 1, 1);
+        let time_period = 180;
         let res = get_dates(&people, &holidays, &start_date, time_period);
         assert!(!res.iter().any(|p| p.date == test_date));
         assert!(res.iter().next().unwrap().person.name == "amichai".to_string());

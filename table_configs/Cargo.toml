@@ -1,12 +1,12 @@
 [package]
 name = "table_configs"
 version = "0.1.0"
-edition = "***REMOVED***"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = { version = "1.0.***REMOVED***", features = ["derive"]}
+serde = { version = "1.0.136", features = ["derive"]}
 serde_json = "1.0.59"
 chrono = "0.4.19"
 platform-dirs="0.3.0"

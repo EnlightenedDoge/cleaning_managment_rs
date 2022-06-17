@@ -12,7 +12,7 @@ use std::sync::mpsc;
 use table_configs::{config, paths};
 use table_maker::Person;
 
-const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** ***REMOVED*** ***REMOVED***/ה ***REMOVED*** ***REMOVED*** ***REMOVED***";
+const MESSAGE: &str = "תזכורת ניקיון\nבמקרה בו אינך יכול/ה לנקות הודיעו לאחראים";
 
 pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
     let config = config::load_config();
@@ -455,7 +455,7 @@ mod tests {
             &data.config,
         );
         println!("{:?}", &name_table);
-        assert!(name_table.contains_key(&NaiveDate::from_ymd(***REMOVED***, 5, 22)));
+        assert!(name_table.contains_key(&NaiveDate::from_ymd(2022, 5, 22)));
     }
 
     #[test]
@@ -510,14 +510,14 @@ mod tests {
 
     fn inititate(drop_type: DropType) -> Data {
         let table = "name,number,date
-John,***REMOVED***,***REMOVED***-05-18
-Maddy,***REMOVED***,***REMOVED***-05-17
-Kaladin,***REMOVED***, ***REMOVED***-05-16";
+John,9725130465,2022-05-18
+Maddy,972541235467,2022-05-17
+Kaladin,972468578448, 2022-05-16";
         let table_path = format!("./test_table_{:?}.csv", drop_type);
         std::fs::write(&table_path, table).unwrap();
         let config = r#"{
-    "start_date": "***REMOVED***-05-18",
-    "range": ***REMOVED***,
+    "start_date": "2022-05-18",
+    "range": 180,
     "output_path":"./output/",
     "send_time":"09:00:00",
     "reset_time":"01:00:00",
@@ -533,7 +533,7 @@ Kaladin,***REMOVED***, ***REMOVED***-05-16";
         std::fs::remove_file(&table_path).unwrap();
         std::fs::remove_file(&config_path).unwrap();
         Data {
-            drop_date: NaiveDate::from_ymd(***REMOVED***, 5, 18),
+            drop_date: NaiveDate::from_ymd(2022, 5, 18),
             name_table: table,
             config,
         }

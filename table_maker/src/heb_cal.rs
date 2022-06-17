@@ -114,7 +114,7 @@ struct ExcludedName {
 // }"#;
 //         let hebcal = vec![HebDate {
 //             title: "Purim".to_string(),
-//             date: NaiveDate::from_ymd(***REMOVED***, 1, 1),
+//             date: NaiveDate::from_ymd(2000, 1, 1),
 //         }];
 //         let dates = generate_heb().expect("Error generating hebcal");
 //         assert!(dates.iter().any(|f| f.title.contains("Purim")));
