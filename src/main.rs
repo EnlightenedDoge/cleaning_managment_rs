@@ -73,9 +73,5 @@ fn main() {
                 panic!("{:?}", e)
             }
         }
-        // println!(
-        //     "{:?}",
-        //     sender::send_to("***REMOVED***", "Test").unwrap() //table::get_soldiers_table("./output/output_table.csv").unwrap()
-        // );
     }
 }

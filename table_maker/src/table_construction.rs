@@ -15,9 +15,9 @@ pub mod construction {
         if exclude_dates {
             heb_cal = exclude_holidays_from_file(heb_cal, &paths::get_excluded_holidays_path())?;
         }
-        let mut soldiers = parse_candidates_from_file(&paths::get_names_path());
-        soldiers.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
-        let dates = get_dates(&soldiers, &heb_cal, &config.start_date, config.range);
+        let mut people = parse_candidates_from_file(&paths::get_names_path());
+        people.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
+        let dates = get_dates(&people, &heb_cal, &config.start_date, config.range);
 
         //create tables to ./output/
         //Names table to be used by program
@@ -25,8 +25,8 @@ pub mod construction {
             .iter()
             .map(|x| NamesTableRaw {
                 date: x.date.to_string(),
-                name: x.soldier.name.clone(),
-                number: x.soldier.phone.clone(),
+                name: x.person.name.clone(),
+                number: x.person.phone.clone(),
             })
             .collect();
         write_csv(&paths::get_output_path(&config.output_file_name), &raws)?;
@@ -37,7 +37,7 @@ pub mod construction {
             .map(|x| BeautyNameTableRaw {
                 date: x.date.to_string(),
                 day: x.date.weekday().to_string(),
-                name: x.soldier.name.clone(),
+                name: x.person.name.clone(),
             })
             .collect();
         write_csv(&paths::get_output_path("beautified_table.csv"), &raws_beaut)?;

@@ -4,13 +4,13 @@ pub mod table {
     use chrono::NaiveDate;
     use csv::{self, Reader, Writer};
     use table_configs::paths;
-    use table_maker::{HebDateRaw, NamesTableRaw, Soldier};
+    use table_maker::{HebDateRaw, NamesTableRaw, Person};
 
-    pub fn get_soldiers_table(
+    pub fn get_people_table(
         filepath: &str,
-    ) -> Result<HashMap<NaiveDate, Soldier>, Box<dyn std::error::Error>> {
+    ) -> Result<HashMap<NaiveDate, Person>, Box<dyn std::error::Error>> {
         let file = std::fs::read_to_string(&filepath).expect("NO TABLE WAS FOUND OR CREATED.");
-        let mut map = HashMap::<NaiveDate, Soldier>::new();
+        let mut map = HashMap::<NaiveDate, Person>::new();
 
         let mut rdr = Reader::from_reader(file.as_bytes());
         let iter = rdr
@@ -20,7 +20,7 @@ pub mod table {
         for row in iter {
             map.insert(
                 NaiveDate::parse_from_str(&row.date, "%Y-%m-%d").unwrap(),
-                Soldier {
+                Person {
                     name: row.name,
                     phone: row.number,
                 },
@@ -28,9 +28,9 @@ pub mod table {
         }
         Ok(map)
     }
-    pub fn update_soldiers_table(
+    pub fn update_source_table(
         filepath: &str,
-        table: &HashMap<NaiveDate, Soldier>,
+        table: &HashMap<NaiveDate, Person>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let mut wtr = Writer::from_writer(vec![]);
         let mut rows = Vec::<NamesTableRaw>::new();

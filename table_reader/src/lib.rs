@@ -6,11 +6,11 @@ use std::{collections::HashMap, process::exit, thread, fmt::Display};
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Weekday};
 use colored::Colorize;
-use reader::table::get_soldiers_table;
+use reader::table::get_people_table;
 use sender::send_to;
 use std::sync::mpsc;
 use table_configs::{config, paths};
-use table_maker::Soldier;
+use table_maker::Person;
 
 const MESSAGE: &str = "***REMOVED*** ***REMOVED***\n***REMOVED*** ***REMOVED*** ***REMOVED*** ***REMOVED***/ה ***REMOVED*** ***REMOVED*** ***REMOVED***";
 
@@ -27,7 +27,7 @@ pub fn start_interface() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let thread_config = config.clone();
-    let table = get_soldiers_table(&paths::get_output_path(&config.output_file_name))?;
+    let table = get_people_table(&paths::get_output_path(&config.output_file_name))?;
     let (tx_request_from_main, rx_request) = mpsc::channel();
     let (tx_status, rx_status) = mpsc::channel();
     let rx_request_clock = tx_request_from_main.clone();
@@ -51,14 +51,14 @@ fn action_loop(
     transmitting: mpsc::Sender<Vec<Box<dyn Display + Send>>>,
     receiving: mpsc::Receiver<Request>,
     config: &config::Config,
-    soldiers_table: HashMap<NaiveDate, Soldier>,
+    people_table: HashMap<NaiveDate, Person>,
 ) {
     let send_time = config.send_time;
     let reset_time = config.reset_time;
     let output_path = &paths::get_output_path(&config.output_file_name);
     let maintainer = &config.maintainer;
     let alert_day = config.alert_day;
-    let mut soldiers_table = soldiers_table;
+    let mut people_table = people_table;
     let mut is_sent = false;
     let mut status = String::new();
     let mut resend = false;
@@ -73,20 +73,20 @@ fn action_loop(
                     Status {
                             sent_today: is_sent,
                             status: status.to_string(),
-                            todays_soldier: get_soldier_from_table(&soldiers_table, 0),
-                            tomorrows_soldier: get_soldier_from_table(&soldiers_table, 1),
+                            todays_name: get_name_from_table(&people_table, 0),
+                            tomorrows_name: get_name_from_table(&people_table, 1),
                         };
                    vec![Box::new(format!("sent_today: {}
 sent status: {}
-today's soldier: {:?}
-tomorrow's soldier: {:?}
+today's candidate: {:?}
+tomorrow's candidate: {:?}
 now: {},
 send time: {}
 reset time: {}",
                                         status.sent_today,
                                         status.status,
-                                        status.todays_soldier,
-                                        status.tomorrows_soldier,
+                                        status.todays_name,
+                                        status.tomorrows_name,
                                         chrono::Local::now(),
                                         config.send_time,
                                         config.send_time > config.reset_time))]
@@ -96,7 +96,7 @@ reset time: {}",
                 //basic functionality. Send to specified name on specified time
                 Request::Refresh => {
                     (is_sent, status) = check_can_send(
-                        &soldiers_table,
+                        &people_table,
                         &send_time,
                         &reset_time,
                         &alert_day,
@@ -111,13 +111,13 @@ reset time: {}",
 
                 //switch names of between two dates
                 Request::Switch(date1, date2) => {
-                    if soldiers_table.contains_key(&date1) && soldiers_table.contains_key(&date2) {
-                        let sol = soldiers_table.get(&date1).unwrap().clone();
-                        soldiers_table.insert(date1, soldiers_table.get(&date2).unwrap().clone());
-                        soldiers_table.insert(date2, sol);
-                        reader::table::update_soldiers_table(&output_path, &soldiers_table)
+                    if people_table.contains_key(&date1) && people_table.contains_key(&date2) {
+                        let sol = people_table.get(&date1).unwrap().clone();
+                        people_table.insert(date1, people_table.get(&date2).unwrap().clone());
+                        people_table.insert(date2, sol);
+                        reader::table::update_source_table(&output_path, &people_table)
                             .unwrap();
-                        print_around_date(&soldiers_table, 5, &vec![date1, date2])
+                        print_around_date(&people_table, 5, &vec![date1, date2])
                     } else {
                         vec![Box::new("Dates provided don't exist in table")]
                     }
@@ -132,11 +132,11 @@ reset time: {}",
                 //Drop a name from the table completly, collapse the next names to the current one's date, or postpone by 
                 //moving all names from given date one entry forward
                 Request::Drop(drop_type, date) => {
-                    if soldiers_table.contains_key(&date) {
-                        drop_name(&mut soldiers_table, drop_type, date, config);
-                        reader::table::update_soldiers_table(&output_path, &soldiers_table)
+                    if people_table.contains_key(&date) {
+                        drop_name(&mut people_table, drop_type, date, config);
+                        reader::table::update_source_table(&output_path, &people_table)
                             .unwrap();
-                        print_around_date(&soldiers_table, 5, &vec![date])
+                        print_around_date(&people_table, 5, &vec![date])
                     }
                     else{
                         vec![]
@@ -159,12 +159,12 @@ reset time: {}",
                     let weeks = now.iter_weeks().take(num_of_weeks);
                     for week in weeks {
                         week.iter_days().take(7).for_each(|day| {
-                            if soldiers_table.contains_key(&day) {
+                            if people_table.contains_key(&day) {
                                 output.push(Box::new(format!(
                                     "{} {} | {}",
                                     day.weekday().to_string(),
                                     day,
-                                    soldiers_table.get(&day).unwrap().name
+                                    people_table.get(&day).unwrap().name
                                 )));
                             }
                         });
@@ -179,16 +179,16 @@ reset time: {}",
 }
 
 fn drop_name(
-    soldiers_table: &mut HashMap<NaiveDate, Soldier>,
+    people_table: &mut HashMap<NaiveDate, Person>,
     drop_type: DropType,
     date: NaiveDate,
     config: &config::Config,
 ) {
     match drop_type {
-        DropType::Clean => _ = soldiers_table.remove(&date),
+        DropType::Clean => _ = people_table.remove(&date),
         DropType::Collapse => {
             //Get dates from and including given point and sort them.
-            let mut dates: Vec<NaiveDate> = soldiers_table
+            let mut dates: Vec<NaiveDate> = people_table
                 .keys()
                 .filter(|d| **d >= date)
                 .cloned()
@@ -201,11 +201,11 @@ fn drop_name(
                 let next_date = iter.next();
                 match next_date {
                     Some(next_date) => {
-                        let next_value = soldiers_table.get(&next_date).unwrap().clone();
-                        soldiers_table.entry(date).and_modify(|e| *e = next_value);
+                        let next_value = people_table.get(&next_date).unwrap().clone();
+                        people_table.entry(date).and_modify(|e| *e = next_value);
                     }
                     None => {
-                        soldiers_table.remove(&date);
+                        people_table.remove(&date);
                     }
                 }
                 curr_date = next_date;
@@ -214,7 +214,7 @@ fn drop_name(
         DropType::Postpone => {
             //Add "Next eligible date" functionality to table maker.
             //Move modifying functionality to table_maker.
-            let mut table = soldiers_table.clone();
+            let mut table = people_table.clone();
             let latest = table.keys().max().unwrap();
             if let Ok(excluded_dates) = reader::table::get_excluded_dates() {
                 let mut dates: Vec<NaiveDate> =
@@ -247,14 +247,14 @@ fn drop_name(
                     curr_date = prev_date;
                 }
             }
-            *soldiers_table = table;
+            *people_table = table;
         }
     }
 }
 
 //Check if it is possible to send an SMS message and return status.
 fn check_can_send(
-    soldiers_table: &HashMap<NaiveDate, Soldier>,
+    people_table: &HashMap<NaiveDate, Person>,
     send_time: &NaiveTime,
     reset_time: &NaiveTime,
     alert_day: &Weekday,
@@ -270,7 +270,7 @@ fn check_can_send(
         status.clear();
     }
     if !is_sent && is_close_to_time(send_time) || resend {
-        (is_sent, status) = send_from_table(&soldiers_table);
+        (is_sent, status) = send_from_table(&people_table);
 
         //send to maintainer
         if !is_sent && chrono::Local::now().date().weekday() == *alert_day {
@@ -282,10 +282,10 @@ fn check_can_send(
 }
 
 //send sms message to number found in table
-fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, String) {
-    match get_soldier_from_table(&soldiers_table, 0) {
-        Some(soldier) => {
-            if let Ok(res) = send_to(&soldier.phone, &format!("{}: {}", soldier.name, MESSAGE)) {
+fn send_from_table(people_table: &HashMap<NaiveDate, Person>) -> (bool, String) {
+    match get_name_from_table(&people_table, 0) {
+        Some(person) => {
+            if let Ok(res) = send_to(&person.phone, &format!("{}: {}", person.name, MESSAGE)) {
                 let num: u32 = res
                     .split_whitespace()
                     .filter(|s| s.parse::<u32>().is_ok())
@@ -304,16 +304,16 @@ fn send_from_table(soldiers_table: &HashMap<NaiveDate, Soldier>) -> (bool, Strin
                 (false, "Failed".to_string())
             }
         }
-        None => (false, "No soldier found".to_string()),
+        None => (false, "No person found".to_string()),
     }
 }
 
 //get name-number pair from the table
-fn get_soldier_from_table(
-    soldiers_table: &HashMap<NaiveDate, Soldier>,
+fn get_name_from_table(
+    people_table: &HashMap<NaiveDate, Person>,
     add_days: i64,
-) -> Option<Soldier> {
-    soldiers_table
+) -> Option<Person> {
+    people_table
         .get(
             &chrono::Local::now()
                 .date()
@@ -332,7 +332,7 @@ fn is_close_to_time(time: &NaiveTime) -> bool {
 }
 
 //print range of entries around given date
-fn print_around_date(table: &HashMap<NaiveDate, Soldier>, range: usize, dates: &Vec<NaiveDate>) ->Vec<Box<dyn Display+Send>>{
+fn print_around_date(table: &HashMap<NaiveDate, Person>, range: usize, dates: &Vec<NaiveDate>) ->Vec<Box<dyn Display+Send>>{
     if dates.is_empty() || table.is_empty() {
         return vec![];
     }
@@ -408,8 +408,8 @@ pub enum Request {
 pub struct Status {
     sent_today: bool,
     status: String,
-    todays_soldier: Option<Soldier>,
-    tomorrows_soldier: Option<Soldier>,
+    todays_name: Option<Person>,
+    tomorrows_name: Option<Person>,
 }
 
 #[derive(Debug)]
@@ -491,14 +491,14 @@ mod tests {
             .iter()
             .filter(|x| *x.0 >= drop_date)
             .map(|(k, v)| (k.clone(), v.clone()))
-            .collect::<Vec<(NaiveDate, Soldier)>>();
+            .collect::<Vec<(NaiveDate, Person)>>();
         res.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
 
         let mut org = org_table
             .iter()
             .filter(|x| *x.0 >= drop_date)
             .map(|(k, v)| (k.clone(), v.clone()))
-            .collect::<Vec<(NaiveDate, Soldier)>>();
+            .collect::<Vec<(NaiveDate, Person)>>();
         org.sort_by(|x, y| x.0.partial_cmp(&y.0).unwrap());
         let mut org_iter = org.iter();
         _ = org_iter.next();
@@ -528,7 +528,7 @@ Kaladin,***REMOVED***, ***REMOVED***-05-16";
         let config_path = format!("./test_config_{:?}.csv", drop_type);
 
         std::fs::write(&config_path, config).unwrap();
-        let table = reader::table::get_soldiers_table(&table_path).unwrap();
+        let table = reader::table::get_people_table(&table_path).unwrap();
         let config = reader::config::load_config(&config_path).unwrap();
         std::fs::remove_file(&table_path).unwrap();
         std::fs::remove_file(&config_path).unwrap();
@@ -540,7 +540,7 @@ Kaladin,***REMOVED***, ***REMOVED***-05-16";
     }
     struct Data {
         drop_date: NaiveDate,
-        name_table: HashMap<NaiveDate, Soldier>,
+        name_table: HashMap<NaiveDate, Person>,
         config: ConfigReader,
     }
 }

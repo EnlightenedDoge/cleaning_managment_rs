@@ -1,12 +1,12 @@
-mod parse_soldiers;
-pub use self::parse_soldiers::*;
+mod parse_people;
+pub use self::parse_people::*;
 use crate::heb_cal::HebDate;
 use chrono::{Datelike, NaiveDate, Weekday};
 use serde::{ser::SerializeStruct, Serialize};
 
 #[derive(Debug)]
 pub struct Row {
-    pub soldier: Soldier,
+    pub person: Person,
     pub date: NaiveDate,
 }
 
@@ -16,14 +16,14 @@ impl Serialize for Row {
         S: serde::Serializer,
     {
         let mut state = serializer.serialize_struct("Row", 2)?;
-        state.serialize_field("soldier", &serde_json::to_value(&self.soldier).unwrap())?;
+        state.serialize_field("person", &serde_json::to_value(&self.person).unwrap())?;
         state.serialize_field("date", &self.date.to_string())?;
         state.end()
     }
 }
 
 pub fn get_dates(
-    soldiers: &Vec<Soldier>,
+    people: &Vec<Person>,
     holidays: &Vec<HebDate>,
     start_date: &NaiveDate,
     time_period: usize,
@@ -34,22 +34,22 @@ pub fn get_dates(
     dates.retain(|d| !holidays.contains(d));
 
     let mut rows = vec![];
-    let mut iter = soldiers.iter();
+    let mut iter = people.iter();
     for date in dates {
-        if let Some(soldier) = iter.next() {
+        if let Some(person) = iter.next() {
             rows.push(Row {
-                soldier: soldier.clone(),
+                person: person.clone(),
                 date,
             });
         } else {
-            iter = soldiers.iter();
-            if let Some(soldier) = iter.next() {
+            iter = people.iter();
+            if let Some(person) = iter.next() {
                 rows.push(Row {
-                    soldier: soldier.clone(),
+                    person: person.clone(),
                     date,
                 });
             } else {
-                panic!("Soldiers' vector is empty");
+                panic!("People' vector is empty");
             }
         }
     }
@@ -84,12 +84,12 @@ mod tests {
 
     #[test]
     fn dates_filtering() {
-        let soldiers = vec![
-            Soldier {
+        let people = vec![
+            Person {
                 name: "amichai".to_string(),
                 phone: "***REMOVED***".to_string(),
             },
-            Soldier {
+            Person {
                 name: "Joe".to_string(),
                 phone: "***REMOVED***".to_string(),
             },
@@ -101,8 +101,8 @@ mod tests {
         }];
         let start_date = NaiveDate::from_ymd(***REMOVED***, 1, 1);
         let time_period = ***REMOVED***;
-        let res = get_dates(&soldiers, &holidays, &start_date, time_period);
+        let res = get_dates(&people, &holidays, &start_date, time_period);
         assert!(!res.iter().any(|p| p.date == test_date));
-        assert!(res.iter().next().unwrap().soldier.name == "amichai".to_string());
+        assert!(res.iter().next().unwrap().person.name == "amichai".to_string());
     }
 }
