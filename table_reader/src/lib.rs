@@ -9,7 +9,7 @@ use colored::Colorize;
 use reader::table::get_people_table;
 use sender::send_to;
 use std::sync::mpsc;
-use table_configs::{config, paths};
+use table_configs::{config::{self, Config}, paths};
 use table_maker::Person;
 
 const MESSAGE: &str = "תזכורת ניקיון\nבמקרה בו אינך יכול/ה לנקות הודיעו לאחראים";
@@ -53,11 +53,7 @@ fn action_loop(
     config: &config::Config,
     people_table: HashMap<NaiveDate, Person>,
 ) {
-    let send_time = config.send_time;
-    let reset_time = config.reset_time;
     let output_path = &paths::get_output_path(&config.output_file_name);
-    let maintainer = &config.maintainer;
-    let alert_day = config.alert_day;
     let mut people_table = people_table;
     let mut is_sent = false;
     let mut status = String::new();
@@ -69,13 +65,6 @@ fn action_loop(
             let output:Vec<Box<dyn Display + Send>> = match req {
                 //Send back formatted status of current and next candidate
                 Request::Status => {
-                    let status =
-                    Status {
-                            sent_today: is_sent,
-                            status: status.to_string(),
-                            todays_name: get_name_from_table(&people_table, 0),
-                            tomorrows_name: get_name_from_table(&people_table, 1),
-                        };
                    vec![Box::new(format!("sent_today: {}
 sent status: {}
 today's candidate: {:?}
@@ -83,10 +72,10 @@ tomorrow's candidate: {:?}
 now: {},
 send time: {}
 reset time: {}",
-                                        status.sent_today,
-                                        status.status,
-                                        status.todays_name,
-                                        status.tomorrows_name,
+                                        is_sent,
+                                        status.to_string(),
+                                        get_name_from_table(&people_table, 0),
+                                        get_name_from_table(&people_table, 1),
                                         chrono::Local::now(),
                                         config.send_time,
                                         config.send_time > config.reset_time))]
@@ -97,10 +86,7 @@ reset time: {}",
                 Request::Refresh => {
                     (is_sent, status) = check_can_send(
                         &people_table,
-                        &send_time,
-                        &reset_time,
-                        &alert_day,
-                        &maintainer,
+                        &config,
                         is_sent,
                         status,
                         resend,
@@ -255,14 +241,15 @@ fn drop_name(
 //Check if it is possible to send an SMS message and return status.
 fn check_can_send(
     people_table: &HashMap<NaiveDate, Person>,
-    send_time: &NaiveTime,
-    reset_time: &NaiveTime,
-    alert_day: &Weekday,
-    maintainer: &str,
+    config:&Config,
     is_sent: bool,
     status: String,
     resend: bool,
 ) -> (bool, String) {
+    let send_time = &config.send_time;
+    let reset_time = &config.reset_time;
+    let maintainer = &config.maintainer;
+    let alert_day = &config.alert_day;
     let mut status = status;
     let mut is_sent = is_sent;
     if is_close_to_time(reset_time) {
@@ -270,11 +257,11 @@ fn check_can_send(
         status.clear();
     }
     if !is_sent && is_close_to_time(send_time) || resend {
-        (is_sent, status) = send_from_table(&people_table);
+        (is_sent, status) = send_from_table(&people_table,&config);
 
         //send to maintainer
         if !is_sent && chrono::Local::now().date().weekday() == *alert_day {
-            send_to(maintainer, "Maintainer alert").unwrap();
+            send_to(maintainer, "Maintainer alert",&config).unwrap();
             is_sent = true;
         }
     }
@@ -282,10 +269,10 @@ fn check_can_send(
 }
 
 //send sms message to number found in table
-fn send_from_table(people_table: &HashMap<NaiveDate, Person>) -> (bool, String) {
+fn send_from_table(people_table: &HashMap<NaiveDate, Person>,config: &Config) -> (bool, String) {
     match get_name_from_table(&people_table, 0) {
         Some(person) => {
-            if let Ok(res) = send_to(&person.phone, &format!("{}: {}", person.name, MESSAGE)) {
+            if let Ok(res) = send_to(&person.phone, &format!("{}: {}", person.name, MESSAGE),config) {
                 let num: u32 = res
                     .split_whitespace()
                     .filter(|s| s.parse::<u32>().is_ok())
@@ -403,13 +390,6 @@ pub enum Request {
     Resend,
     Drop(DropType, NaiveDate),
     Show(usize),
-}
-
-pub struct Status {
-    sent_today: bool,
-    status: String,
-    todays_name: Option<Person>,
-    tomorrows_name: Option<Person>,
 }
 
 #[derive(Debug)]

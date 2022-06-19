@@ -1,14 +1,15 @@
 use reqwest;
 use serde::Serialize;
+use table_configs::config::Config;
 
-pub fn send_to(number: &str, message: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn send_to(number: &str, message: &str, config: &Config) -> Result<String, Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
 
     let body = Body {
-        key: "",
-        user: "",
-        pass: "",
-        sender: "",
+        key: &config.key,
+        user: &config.user,
+        pass: &config.pass,
+        sender: &config.sender,
         recipient: number,
         msg: message,
     };

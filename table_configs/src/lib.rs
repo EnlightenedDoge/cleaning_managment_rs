@@ -7,7 +7,11 @@ mod templates {
         "reset_time":"HH:MM:SS",
         "maintainer":"phone_number",
         "alert_day":5, //1=Sunday 7=Saturday
-        "weekend":[x,y,z]//1=Sunday 7=Saturday[6,7]=Friday and Saturday
+        "weekend":[x,y,z],//1=Sunday 7=Saturday[6,7]=Friday and Saturday
+        "key": "Insert key here",
+        "user": "Insert your account's registered phone number here",
+        "pass": "Insert accounts's password key here",
+        "sender": "Insert the phone number sending the messages here",
     }"#;
 
     pub const NAMES_TEMPLATE: &str = r#"name,phone
@@ -158,6 +162,10 @@ pub mod config {
         pub maintainer: String,
         pub alert_day: usize,
         pub weekend: Vec<usize>,
+        pub key: String,
+        pub user: String,
+        pub pass: String,
+        pub sender: String,
     }
 
     #[derive(Debug, Clone)]
@@ -170,6 +178,10 @@ pub mod config {
         pub maintainer: String,
         pub alert_day: chrono::Weekday,
         pub weekend: Vec<chrono::Weekday>,
+        pub key: String,
+        pub user: String,
+        pub pass: String,
+        pub sender: String,
     }
     impl Config {
         pub fn from(config: ConfigRaw) -> Self {
@@ -182,6 +194,10 @@ pub mod config {
                 maintainer: config.maintainer,
                 alert_day: int_to_weekday(config.alert_day),
                 weekend: config.weekend.iter().map(|x| int_to_weekday(*x)).collect(),
+                key: config.key,
+                user: config.user,
+                pass: config.pass,
+                sender: config.sender,
             }
         }
     }
