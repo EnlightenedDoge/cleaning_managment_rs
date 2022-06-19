@@ -9,5 +9,5 @@ Fill the configuration files as you see fit and run the program again.
 
 After running the executable the created table should be in the "output" folder under "cleaning_managment".
 
-Once a table is created you can run the software with the -r flag to start the sending process.
+Once a table is created you can run the software with the -p flag to start the sending process.
 While in sending mode you can type "help" to list avilable commands to execute.
